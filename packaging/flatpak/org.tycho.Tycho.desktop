@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Tycho
-GenericName=Voice Assistant & Compositor Copilot
-Comment=Autonomous low-latency voice assistant for Hyprland and KDE Plasma compositors
+GenericName=Voice Assistant
+Comment=Voice control daemon for Hyprland and KDE Plasma compositors
 Exec=tycho run
 Icon=org.tycho.Tycho
 Terminal=true

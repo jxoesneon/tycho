@@ -1,5 +1,5 @@
 [Unit]
-Description=Tycho Autonomous Voice Assistant & Compositor Copilot
+Description=Tycho Voice Control Daemon
 Documentation=https://github.com/jxoesneon/tycho
 PartOf=graphical-session.target
 After=graphical-session.target pipewire.service wireplumber.service

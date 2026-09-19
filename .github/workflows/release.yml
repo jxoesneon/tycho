@@ -160,7 +160,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-assets
-      - name: Collate Release Assets & Generate Master SHA256SUMS
+      - name: Collate Release Assets & Generate SHA256SUMS
         run: |
           mkdir -p release-final
           find release-assets/ -type f \( -name "*.tar.gz" -o -name "*.deb" -o -name "*.flatpak" \) -exec cp {} release-final/ \;

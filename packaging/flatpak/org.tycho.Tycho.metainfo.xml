@@ -4,10 +4,10 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT OR Apache-2.0</project_license>
   <name>Tycho</name>
-  <summary>Autonomous low-latency voice assistant for Linux compositors</summary>
+  <summary>Voice control daemon for Linux compositors</summary>
   <description>
     <p>
-      Tycho is an autonomous voice assistant engineered in Rust specifically for modern Linux desktop compositors,
+      Tycho is a voice assistant daemon written in Rust for modern Linux desktop compositors,
       including Hyprland Wayland and KDE Plasma KWin.
     </p>
     <p>Features include:</p>

@@ -1,4 +1,4 @@
-name: Institutional Quality Gates & CI
+name: CI
 
 on:
   push:
