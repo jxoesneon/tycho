@@ -30,6 +30,10 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdbus-1-dev libpipewire-0.3-dev libasound2-dev libxkbcommon-dev libudev-dev pkg-config
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -38,15 +42,21 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
 
   msrv:
-    name: MSRV Verification (1.75.0)
+    name: MSRV Verification (1.88.0)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
-      - name: Setup Rust 1.75.0
-        uses: dtolnay/rust-toolchain@1.75.0
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libxkbcommon-dev libudev-dev pkg-config
+      - name: Setup Rust 1.88.0
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88.0
       - name: Check Compilation against MSRV
-        run: cargo check --all-targets
+        run: cargo check --all-targets --all-features
 
   tests:
     name: Test Matrix (${{ matrix.feature_label }})
@@ -59,7 +69,7 @@ jobs:
             cargo_flags: ""
           - feature_label: "No Default Features (Pure Headless)"
             cargo_flags: "--no-default-features"
-          - feature_label: "Hyprland Only"
+          - feature_label: "Hyprland (ultranix-mcp)"
             cargo_flags: "--no-default-features --features hyprland"
           - feature_label: "KDE Plasma Only"
             cargo_flags: "--no-default-features --features kde"
@@ -68,6 +78,10 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libxkbcommon-dev libudev-dev pkg-config
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Run Test Suite
