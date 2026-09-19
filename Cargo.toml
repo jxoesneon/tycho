@@ -1,0 +1,67 @@
+[package]
+name = "tycho"
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.75.0"
+authors = ["Jose Eduardo Rojas Jimenez <jxoesneon>"]
+description = "Tycho: Autonomous low-latency voice assistant for Linux compositors (Hyprland, KDE Plasma, Wayland/X11) built in Rust"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/jxoesneon/tycho"
+homepage = "https://github.com/jxoesneon/tycho"
+documentation = "https://docs.rs/tycho"
+keywords = ["voice-assistant", "wayland", "hyprland", "kde", "onnx"]
+categories = ["accessibility", "command-line-utilities", "multimedia::audio"]
+exclude = [
+    ".github/",
+    "packaging/",
+    "docs/",
+    "tests/fixtures/",
+    "*.tmp*",
+]
+
+[dependencies]
+tokio = { version = "1.38", features = ["full"] }
+async-trait = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+clap = { version = "4.5", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+ultranix-mcp = { version = "1.4.0", optional = true }
+zbus = { version = "4.3", optional = true }
+
+[features]
+default = ["all-desktops"]
+hyprland = ["dep:ultranix-mcp"]
+kde = ["dep:zbus"]
+all-desktops = ["hyprland", "kde"]
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[[bin]]
+name = "tycho"
+path = "src/main.rs"
+
+[lib]
+name = "rust_voice_assistant"
+path = "src/lib.rs"
+
+[package.metadata.deb]
+name = "tycho"
+maintainer = "Jose Eduardo Rojas Jimenez <jxoesneon@users.noreply.github.com>"
+copyright = "2026 Jose Eduardo Rojas Jimenez"
+license-file = ["LICENSE-MIT", "4"]
+extended-description = "Tycho is an autonomous, low-latency Linux desktop voice assistant engineered for Hyprland Wayland and KDE Plasma compositors."
+section = "sound"
+priority = "optional"
+depends = "$auto, libpipewire-0.3-0, dbus"
+assets = [
+    ["target/release/tycho", "usr/bin/tycho", "755"],
+    ["systemd/tycho.service", "usr/lib/systemd/user/tycho.service", "644"],
+    ["packaging/flatpak/org.tycho.Tycho.desktop", "usr/share/applications/org.tycho.Tycho.desktop", "644"],
+    ["README.md", "usr/share/doc/tycho/README.md", "644"],
+]

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.tycho.Tycho</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT OR Apache-2.0</project_license>
+  <name>Tycho</name>
+  <summary>Autonomous low-latency voice assistant for Linux compositors</summary>
+  <description>
+    <p>
+      Tycho is an autonomous voice assistant engineered in Rust specifically for modern Linux desktop compositors,
+      including Hyprland Wayland and KDE Plasma KWin.
+    </p>
+    <p>Features include:</p>
+    <ul>
+      <li>Automated first-run ONNX model pulling from HuggingFace Hub</li>
+      <li>Sub-10ms System 1 fast-path compositor navigation</li>
+      <li>System 2 deliberative reasoning with desktop situational awareness</li>
+      <li>Instant barge-in audio interruption</li>
+      <li>Four dynamic conversational personas</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">org.tycho.Tycho.desktop</launchable>
+  <url type="homepage">https://github.com/jxoesneon/tycho</url>
+  <url type="bugtracker">https://github.com/jxoesneon/tycho/issues</url>
+  <developer_name>Jose Eduardo Rojas Jimenez</developer_name>
+  <releases>
+    <release version="0.2.0" date="2026-09-19" />
+  </releases>
+</component>

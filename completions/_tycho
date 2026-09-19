@@ -1,0 +1,15 @@
+#compdef tycho
+
+_tycho() {
+    local -a commands
+    commands=(
+        'run:Start Tycho voice listener daemon'
+        'daemon:Start Tycho in background daemon mode'
+        'query:Execute a direct voice or text query'
+        'test-desktop:Test compositor integration and query desktop state'
+        'pull-models:Manually pull or refresh latest ONNX models from HuggingFace'
+    )
+    _describe 'command' commands
+}
+
+_tycho "$@"

@@ -1,0 +1,23 @@
+[Unit]
+Description=Tycho Autonomous Voice Assistant & Compositor Copilot
+Documentation=https://github.com/jxoesneon/tycho
+PartOf=graphical-session.target
+After=graphical-session.target pipewire.service wireplumber.service
+
+[Service]
+Type=simple
+ExecStart=%h/.cargo/bin/tycho run
+Restart=on-failure
+RestartSec=3s
+Environment=RUST_LOG=info
+Environment=TYCHO_CACHE_DIR=%h/.local/share/tycho
+
+# Sandboxing & Security Constraints
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/share/tycho
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=graphical-session.target

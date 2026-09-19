@@ -1,0 +1,37 @@
+app-id: org.tycho.Tycho
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: tycho
+
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --socket=session-bus
+  - --talk-name=org.kde.KWin
+  - --talk-name=org.mpris.MediaPlayer2.*
+  - --filesystem=xdg-run/hypr:ro
+  - --filesystem=~/.local/share/tycho:create
+  - --share=network
+  - --share=ipc
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/tycho/cargo
+
+modules:
+  - name: tycho
+    buildsystem: simple
+    build-commands:
+      - cargo --offline fetch --manifest-path Cargo.toml || cargo fetch --manifest-path Cargo.toml
+      - cargo build --release --features all-desktops
+      - install -Dm755 target/release/tycho /app/bin/tycho
+      - install -Dm644 packaging/flatpak/org.tycho.Tycho.desktop /app/share/applications/org.tycho.Tycho.desktop
+      - install -Dm644 packaging/flatpak/org.tycho.Tycho.metainfo.xml /app/share/metainfo/org.tycho.Tycho.metainfo.xml
+    sources:
+      - type: dir
+        path: ../../

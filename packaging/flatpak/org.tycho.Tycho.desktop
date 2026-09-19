@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Tycho
+GenericName=Voice Assistant & Compositor Copilot
+Comment=Autonomous low-latency voice assistant for Hyprland and KDE Plasma compositors
+Exec=tycho run
+Icon=org.tycho.Tycho
+Terminal=true
+Type=Application
+Categories=Utility;AudioVideo;Audio;Accessibility;
+Keywords=voice;assistant;hyprland;kde;wayland;stt;tts;onnx;

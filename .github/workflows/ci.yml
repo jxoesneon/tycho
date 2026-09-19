@@ -1,0 +1,118 @@
+name: Institutional Quality Gates & CI
+
+on:
+  push:
+    branches: [ "main", "master", "develop" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  fmt:
+    name: Code Formatting (rustfmt)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Run Format Check
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Linter (clippy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdbus-1-dev libpipewire-0.3-dev libasound2-dev pkg-config
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Run Clippy Across All Targets & Features
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  msrv:
+    name: MSRV Verification (1.75.0)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+      - name: Setup Rust 1.75.0
+        uses: dtolnay/rust-toolchain@1.75.0
+      - name: Check Compilation against MSRV
+        run: cargo check --all-targets
+
+  tests:
+    name: Test Matrix (${{ matrix.feature_label }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - feature_label: "Default Features (All Desktops)"
+            cargo_flags: ""
+          - feature_label: "No Default Features (Pure Headless)"
+            cargo_flags: "--no-default-features"
+          - feature_label: "Hyprland Only"
+            cargo_flags: "--no-default-features --features hyprland"
+          - feature_label: "KDE Plasma Only"
+            cargo_flags: "--no-default-features --features kde"
+          - feature_label: "All Desktops Explicit"
+            cargo_flags: "--features all-desktops"
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run Test Suite
+        run: cargo test --verbose ${{ matrix.cargo_flags }}
+
+  docs:
+    name: Documentation Quality & Link Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Verify Documentation Build
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+        run: cargo doc --no-deps --all-features
+
+  security:
+    name: Security Vulnerability & License Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Audit Tools
+        run: cargo install --locked cargo-audit cargo-deny || true
+      - name: Run Cargo Audit
+        run: cargo audit
+      - name: Run Cargo Deny
+        run: cargo deny check
+
+  crates-io-validation:
+    name: Crates.io Publish Verification (Dry-Run)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Validate Crates.io Package Manifest & Files
+        run: cargo publish --dry-run
