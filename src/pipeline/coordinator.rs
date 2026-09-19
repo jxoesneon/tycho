@@ -102,8 +102,7 @@ impl TychoPipelineCoordinator {
                     confidence,
                 });
 
-                let res = self.executor.execute(&intent, parameter.as_deref()).await
-                    .map_err(|e| Error::Desktop(e.to_string()))?;
+                let res = self.executor.execute(&intent, parameter.as_deref()).await?;
 
                 let _ = self.event_tx.send(PipelineEvent::DesktopActionExecuted {
                     output: res.output_message.clone(),

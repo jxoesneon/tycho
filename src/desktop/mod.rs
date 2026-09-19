@@ -1,4 +1,4 @@
-//! Desktop compositor backend integration and abstractions.
+//! Modular compositor and desktop automation backends.
 
 pub mod hyprland;
 pub mod kde;
@@ -10,4 +10,6 @@ pub use hyprland::HyprlandBackend;
 pub use kde::KdeBackend;
 pub use manager::DesktopManager;
 pub use mock::MockBackend;
-pub use traits::DesktopBackend;
+pub use traits::{
+    BackendCapabilities, DesktopBackend, DesktopError, DesktopEvent, WindowContext, WindowGeometry, WorkspaceContext,
+};

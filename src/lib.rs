@@ -14,7 +14,10 @@ pub mod stt;
 pub mod tts;
 
 pub use config::{ModelsConfig, ModelSpecConfig, TychoConfig};
-pub use desktop::{DesktopBackend, DesktopManager, HyprlandBackend, KdeBackend, MockBackend};
+pub use desktop::{
+    BackendCapabilities, DesktopBackend, DesktopError, DesktopEvent, DesktopManager, HyprlandBackend, KdeBackend,
+    MockBackend, WindowContext, WindowGeometry, WorkspaceContext,
+};
 pub use error::{Error, Result};
 pub use execution::{DesktopExecutionResult, DesktopExecutor, SystemCommandResult, SystemExecutor};
 pub use generation::AssistantPersona;

@@ -4,7 +4,7 @@ version = "0.2.0"
 edition = "2021"
 rust-version = "1.75.0"
 authors = ["Jose Eduardo Rojas Jimenez <jxoesneon>"]
-description = "Voice control daemon for Linux compositors (Hyprland, KDE Plasma, Wayland/X11)"
+description = "Tycho: Autonomous low-latency voice assistant for Linux compositors (Hyprland, KDE Plasma, Wayland/X11) built in Rust"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/jxoesneon/tycho"
@@ -30,13 +30,10 @@ clap = { version = "4.5", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-ultranix-mcp = { version = "1.4.0", optional = true }
-zbus = { version = "4.3", optional = true }
-
 [features]
 default = ["all-desktops"]
-hyprland = ["dep:ultranix-mcp"]
-kde = ["dep:zbus"]
+hyprland = []
+kde = []
 all-desktops = ["hyprland", "kde"]
 
 [dev-dependencies]
@@ -55,10 +52,10 @@ name = "tycho"
 maintainer = "Jose Eduardo Rojas Jimenez <jxoesneon@users.noreply.github.com>"
 copyright = "2026 Jose Eduardo Rojas Jimenez"
 license-file = ["LICENSE-MIT", "4"]
-extended-description = "Low-latency voice control daemon for Hyprland and KDE Plasma compositors."
+extended-description = "Tycho is an autonomous, low-latency Linux desktop voice assistant engineered for Hyprland Wayland and KDE Plasma compositors."
 section = "sound"
 priority = "optional"
-depends = "$auto, libpipewire-0.3-0, dbus"
+depends = "$auto, libasound2"
 assets = [
     ["target/release/tycho", "usr/bin/tycho", "755"],
     ["systemd/tycho.service", "usr/lib/systemd/user/tycho.service", "644"],
