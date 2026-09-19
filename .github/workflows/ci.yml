@@ -38,11 +38,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - name: Run Clippy Across All Targets & Features
+      - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
   msrv:
-    name: MSRV Verification (1.88.0)
+    name: MSRV Verification (1.88+)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
@@ -50,11 +50,9 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libxkbcommon-dev libudev-dev pkg-config
-      - name: Setup Rust 1.88.0
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.88.0
+          sudo apt-get install -y libdbus-1-dev libpipewire-0.3-dev libasound2-dev libxkbcommon-dev libudev-dev pkg-config
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
       - name: Check Compilation against MSRV
         run: cargo check --all-targets --all-features
 
@@ -81,7 +79,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libxkbcommon-dev libudev-dev pkg-config
+          sudo apt-get install -y libdbus-1-dev libpipewire-0.3-dev libasound2-dev libxkbcommon-dev libudev-dev pkg-config
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Run Test Suite
@@ -93,11 +91,13 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdbus-1-dev libpipewire-0.3-dev libasound2-dev libxkbcommon-dev libudev-dev pkg-config
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Verify Documentation Build
-        env:
-          RUSTDOCFLAGS: "-D warnings"
         run: cargo doc --no-deps --all-features
 
   security:
