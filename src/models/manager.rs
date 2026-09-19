@@ -155,10 +155,10 @@ impl ModelManager {
 }
 
 fn expand_tilde(path: &Path) -> PathBuf {
-    if let Ok(path_str) = path.into_os_string().into_string() {
-        if path_str.starts_with("~/") {
+    if let Some(path_str) = path.to_str() {
+        if let Some(stripped) = path_str.strip_prefix("~/") {
             if let Ok(home) = std::env::var("HOME") {
-                return PathBuf::from(home).join(&path_str[2..]);
+                return PathBuf::from(home).join(stripped);
             }
         }
     }
