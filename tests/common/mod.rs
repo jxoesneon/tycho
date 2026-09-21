@@ -51,6 +51,16 @@ pub fn model_weights() -> &'static [u8] {
 pub fn test_models_config() -> rust_voice_assistant::config::ModelsConfig {
     let mut config = rust_voice_assistant::config::ModelsConfig::default();
     config.stt_model.expected_min_bytes = 1024;
+    // The router spec is opt-in by default; fixtures enable it to keep
+    // the optional-download path exercised.
+    config.router_model = Some(rust_voice_assistant::config::ModelSpecConfig {
+        repo_id: "convaiinnovations/laya".to_string(),
+        revision: "main".to_string(),
+        filename: "model.onnx".to_string(),
+        target_filename: "laya_intent_classifier.onnx".to_string(),
+        expected_min_bytes: 512,
+        subfolder: None,
+    });
     config
 }
 
@@ -125,6 +135,9 @@ pub fn seeded_cache_config(tag: &str) -> (rust_voice_assistant::config::TychoCon
     config.ui.orb = false;
     // Never bootstrap a local LLM backend during tests.
     config.generation.auto_setup = false;
+    // Point the neural router at a dead port by default — a test that
+    // forgets to stub it must not leak queries to a live local model.
+    config.router.jev_endpoint = "http://127.0.0.1:1".to_string();
     (config, dir)
 }
 

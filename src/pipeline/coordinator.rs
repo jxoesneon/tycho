@@ -83,18 +83,26 @@ impl TychoPipelineCoordinator {
         let stt = Arc::new(WhisperEngine::new_with_path(
             &config.stt.engine,
             &config.stt.language,
-            models.stt_model_path.clone(),
+            config
+                .stt
+                .model_path
+                .clone()
+                .unwrap_or_else(|| models.stt_model_path.clone()),
         )?);
 
-        let router = UnifiedRouter::new(
+        let mut router = UnifiedRouter::new(
             &config.router.laya_hf_repo,
             config.router.jev_api_key.clone(),
             &config.router.jev_endpoint,
             &config.router.jev_model,
             config.router.fast_path_confidence_threshold,
         );
+        router.laya_enabled = config.router.fallback_to_laya;
 
-        let desktop_mgr = DesktopManager::init_auto().await;
+        let desktop_mgr =
+            DesktopManager::init_with_config(&config.desktop.backend, config.desktop.auto_detect)
+                .await;
+        info!("desktop backend bound: {}", desktop_mgr.backend_name());
         let executor = DesktopExecutor::new(desktop_mgr);
 
         match crate::generation::bootstrap::ensure_local_backend(
@@ -672,12 +680,17 @@ impl TychoPipelineCoordinator {
                     if !path.exists() {
                         let _ = crate::config::save_ui_patch(None, None, None, None);
                     }
-                    let _ = std::process::Command::new("xdg-open")
+                    if let Ok(mut child) = std::process::Command::new("xdg-open")
                         .arg(&path)
                         .stdin(std::process::Stdio::null())
                         .stdout(std::process::Stdio::null())
                         .stderr(std::process::Stdio::null())
-                        .spawn();
+                        .spawn()
+                    {
+                        std::thread::spawn(move || {
+                            let _ = child.wait();
+                        });
+                    }
                 }
             }
             UiCommand::Shutdown => {
@@ -694,23 +707,7 @@ impl TychoPipelineCoordinator {
     #[cfg(feature = "orb")]
     fn apply_config_value(&mut self, key: &str, value: &str) {
         // Typed TOML representation per key family.
-        let toml_value = match key {
-            "ui.orb"
-            | "desktop.auto_detect"
-            | "models.auto_download_on_first_run"
-            | "generation.auto_setup"
-            | "memory.enable_long_term" => value.parse::<bool>().ok().map(toml::Value::Boolean),
-            "vad.energy_threshold"
-            | "router.fast_path_confidence_threshold"
-            | "tts.speed"
-            | "wake.threshold"
-            | "generation.temperature" => value.parse::<f64>().ok().map(toml::Value::Float),
-            "vad.min_silence_duration_ms"
-            | "vad.min_speech_duration_ms"
-            | "generation.max_tokens"
-            | "memory.max_history_turns" => value.parse::<i64>().ok().map(toml::Value::Integer),
-            _ => Some(toml::Value::String(value.to_string())),
-        };
+        let toml_value = crate::config::settings_toml_value(key, value);
 
         // Live application: components that read the value per use.
         match key {
@@ -1107,11 +1104,12 @@ impl TychoPipelineCoordinator {
         }
     }
 
-    /// Spoken output. `SpeakingFinished` is NOT emitted here — the run
-    /// loop reports it when the output queue actually drains. Returns
-    /// the samples enqueued (0 when interrupted mid-enqueue); synthesis
-    /// and playback errors propagate so the deliberative path can fail
-    /// the turn honestly.
+    /// Spoken output. On success `SpeakingFinished` is deferred to the
+    /// run loop, which reports it when the output queue actually drains;
+    /// on failure it is emitted here to close out the speaking state.
+    /// Returns the samples enqueued (0 when interrupted mid-enqueue);
+    /// synthesis and playback errors propagate so the deliberative path
+    /// can fail the turn honestly.
     async fn speak(&mut self, text: &str) -> Result<usize> {
         let pcm = self.tts.synthesize(text).await?;
         let _ = self.event_tx.send(PipelineEvent::SpeakingStarted);

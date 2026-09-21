@@ -279,10 +279,12 @@ impl KdeBackend {
     async fn refresh_state(&self) {
         let current = self.current_desktop().await.unwrap_or(1);
         let names = self.desktop_names().await;
-        let count = names.len().max(1);
+        // Report exactly the desktops KWin names; the floor is the live
+        // current index so a nameless session still lists its real desktop.
+        let count = (names.len() as i32).max(current);
 
         let mut workspaces = std::collections::HashMap::new();
-        for id in 1..=(count as i32).max(4) {
+        for id in 1..=count {
             workspaces.insert(
                 id,
                 WorkspaceContext {

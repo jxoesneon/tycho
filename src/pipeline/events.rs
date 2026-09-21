@@ -1,4 +1,5 @@
-//! Pipeline event definitions for internal diagnostics.
+//! Pipeline event definitions — the broadcast feed that drives the orb,
+//! the chat transcript, and headless diagnostics.
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PipelineEvent {

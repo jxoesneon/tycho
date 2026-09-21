@@ -241,3 +241,66 @@ fn test_wake_config_defaults_and_roundtrip() {
     assert_eq!(cfg.wake.threshold, 0.3);
     let _ = std::fs::remove_file(&path);
 }
+
+/// Every key the settings window offers must round-trip: patch via
+/// `settings_toml_value` + `save_config_patch_to`, then `from_file`
+/// must parse the file. Guards the two key tables (typed mapping vs
+/// settings snapshot) from drifting apart.
+#[test]
+fn test_settings_keys_round_trip() {
+    use rust_voice_assistant::config::{save_config_patch_to, settings_toml_value};
+
+    let cases: &[(&str, &str)] = &[
+        ("ui.orb", "true"),
+        ("ui.earcons", "false"),
+        ("ui.mode", "manual"),
+        ("ui.position", "bottom-left"),
+        ("ui.chat_verbosity", "verbose"),
+        ("desktop.backend", "hyprland"),
+        ("desktop.auto_detect", "false"),
+        ("models.auto_download_on_first_run", "false"),
+        ("generation.auto_setup", "false"),
+        ("generation.temperature", "0.4"),
+        ("generation.max_tokens", "256"),
+        ("generation.model", "llama3.2:3b"),
+        ("generation.persona", "sentinel"),
+        ("memory.enable_long_term", "true"),
+        ("memory.max_history_turns", "10"),
+        ("vad.energy_threshold", "0.02"),
+        ("vad.min_silence_duration_ms", "600"),
+        ("vad.min_speech_duration_ms", "120"),
+        ("router.fast_path_confidence_threshold", "0.9"),
+        ("tts.speed", "1.2"),
+        ("tts.voice", "en_US-amy-medium"),
+        ("tts.engine", "piper"),
+        ("stt.language", "en"),
+        ("wake.model", "hey_jarvis"),
+        ("wake.threshold", "0.6"),
+        ("wake.vad_gate", "0.5"),
+        ("wake.follow_up_seconds", "4"),
+    ];
+
+    let pid = std::process::id();
+    let path = std::env::temp_dir().join(format!("tycho-settings-rt-{pid}.toml"));
+    let _ = std::fs::remove_file(&path);
+
+    for (key, value) in cases {
+        let v = settings_toml_value(key, value)
+            .unwrap_or_else(|| panic!("{key} failed to map '{value}' to a TOML value"));
+        save_config_patch_to(&path, key, v).unwrap();
+        TychoConfig::from_file(&path)
+            .unwrap_or_else(|e| panic!("config broke after writing {key}={value}: {e}"));
+    }
+
+    let cfg = TychoConfig::from_file(&path).unwrap();
+    assert!(!cfg.ui.earcons);
+    assert_eq!(cfg.ui.chat_verbosity, "verbose");
+    assert_eq!(cfg.wake.follow_up_seconds, 4);
+    assert!((cfg.wake.vad_gate - 0.5).abs() < 1e-6);
+    assert_eq!(cfg.generation.max_tokens, 256);
+
+    // Unparsable typed values are rejected instead of written.
+    assert!(settings_toml_value("wake.vad_gate", "loud").is_none());
+
+    let _ = std::fs::remove_file(&path);
+}

@@ -4,7 +4,7 @@
 //! accepts typed queries via keyboard focus. The model is pure so
 //! wrapping, scrolling and hit-testing are unit-testable headless.
 
-use super::menu::{draw_text, draw_title, text_width, GLYPH_PX};
+use super::menu::{char_width, draw_text, draw_title, text_width, GLYPH_PX};
 use crate::pipeline::events::PipelineEvent;
 use tiny_skia::{
     Color, FillRule, LinearGradient, Paint, PathBuilder, Pixmap, Point, RadialGradient, SpreadMode,
@@ -31,6 +31,10 @@ const BUBBLE_PAD: (f32, f32) = (9.0, 5.0);
 /// Transcript retention — older turns drop off the panel (the
 /// persistent memory store keeps the full history).
 const MAX_MESSAGES: usize = 64;
+
+/// Upper bound on the compose field so a stuck key or paste flood
+/// can't grow it without limit.
+const MAX_INPUT_LEN: usize = 2048;
 /// Horizontal text inset.
 const PAD_X: f32 = 14.0;
 /// Width of the title-band close-button hit zone.
@@ -188,10 +192,11 @@ impl ChatModel {
         true
     }
 
-    /// Inserts typed text (utf8 from the keymap) into the input field.
+    /// Inserts typed text (utf8 from the keymap) into the input field,
+    /// bounded so a stuck key or paste flood can't grow it without limit.
     pub fn input_insert(&mut self, s: &str) {
         for c in s.chars() {
-            if !c.is_control() {
+            if !c.is_control() && self.input.len() < MAX_INPUT_LEN {
                 self.input.push(c);
             }
         }
@@ -353,16 +358,26 @@ pub fn wrap_text(text: &str, max_w: f32) -> Vec<String> {
     for raw in text.split('\n') {
         let mut cur = String::new();
         for word in raw.split_whitespace() {
-            // Hard-split a word wider than the field.
+            // Hard-split a word wider than the field. Widths accumulate
+            // incrementally so a long unbroken token stays O(n) instead
+            // of re-measuring the accumulated prefix per character.
             let mut w = word;
-            while text_width(w) > max_w && w.chars().count() > 1 {
+            let mut w_width = text_width(w);
+            while w_width > max_w && w.chars().count() > 1 {
                 let mut cut = String::new();
+                let mut cut_w = 0.0f32;
                 for c in w.chars() {
-                    if text_width(&format!("{cut}{c}")) > max_w {
+                    let cw = char_width(c);
+                    if cut_w + cw > max_w {
                         break;
                     }
                     cut.push(c);
+                    cut_w += cw;
                 }
+                if cut.is_empty() {
+                    break;
+                }
+                w_width -= cut_w;
                 if cur.is_empty() {
                     lines.push(cut.clone());
                 } else {
@@ -826,15 +841,23 @@ pub fn render_chat(model: &ChatModel, close_hover: bool, verb_hover: bool) -> Ve
             TXT_FAINT,
         );
     } else {
-        // Show the tail of the input that fits the field.
+        // Show the tail of the input that fits the field — walk back
+        // from the end accumulating char widths instead of shifting the
+        // string per removed char.
         let avail = iw - 22.0;
-        let mut shown = model.input.clone();
-        while text_width(&shown) > avail && !shown.is_empty() {
-            shown.remove(0);
+        let mut start = model.input.len();
+        let mut width = 0.0f32;
+        for (i, c) in model.input.char_indices().rev() {
+            if width + char_width(c) > avail {
+                break;
+            }
+            width += char_width(c);
+            start = i;
         }
-        draw_text(&mut pixmap, &shown, ix + 10.0, ty, TXT);
+        let shown = &model.input[start..];
+        draw_text(&mut pixmap, shown, ix + 10.0, ty, TXT);
         // Caret.
-        let cx = ix + 10.0 + text_width(&shown) + 2.0;
+        let cx = ix + 10.0 + text_width(shown) + 2.0;
         if let Some(r) = tiny_skia::Rect::from_ltrb(cx, iy + 7.0, cx + 1.5, iy + ih - 7.0) {
             let caret = PathBuilder::from_rect(r);
             let mut paint = Paint::default();

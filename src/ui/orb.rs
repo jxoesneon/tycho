@@ -377,7 +377,10 @@ impl Kbd {
                             buf.as_mut_ptr() as *mut std::ffi::c_char,
                             buf.len(),
                         );
-                        if n > 0 {
+                        // xkb_state_key_get_utf8 returns the *required*
+                        // length when the buffer is too small — only
+                        // slice when the result actually fit.
+                        if n > 0 && (n as usize) <= buf.len() {
                             Some(ChatKey::Text(
                                 String::from_utf8_lossy(&buf[..n as usize]).into_owned(),
                             ))
@@ -1161,7 +1164,14 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ()> for OrbApp {
                     if let Some(s) = app.scrim.as_mut() {
                         s.configured = true;
                         if width > 0 && height > 0 && s.buffer.is_none() {
-                            let len = (width * height * 4) as u64;
+                            // Widen before multiplying: width*height*4
+                            // overflows u32 on high-res outputs, and cap
+                            // the pool so a malicious/buggy size can't
+                            // demand an absurd shm allocation.
+                            let len = u64::from(width) * u64::from(height) * 4;
+                            if len > (1 << 30) {
+                                return;
+                            }
                             if let Ok(mem) = memfd::MemfdOptions::default().create("tycho-scrim") {
                                 if mem.as_file().set_len(len).is_ok() {
                                     let pool = app.shm.create_pool(
@@ -1466,6 +1476,12 @@ impl Dispatch<wl_keyboard::WlKeyboard, ()> for OrbApp {
                 if is_xkb {
                     // Keymap fds arrive positioned at end-of-file and
                     // may be sealed — read absolutely from offset 0.
+                    // Real keymaps are tens of KB; cap the compositor-
+                    // supplied size so a bogus value can't force a huge
+                    // allocation.
+                    if size == 0 || size > 1024 * 1024 {
+                        return;
+                    }
                     let f = std::fs::File::from(fd);
                     let mut buf = vec![0u8; size as usize];
                     if f.read_exact_at(&mut buf, 0).is_ok() {

@@ -10,6 +10,9 @@ mod common;
 fn test_config() -> (TychoConfig, common::TempDir) {
     let (mut config, cache) = common::seeded_cache_config("int");
     config.generation.endpoint = common::openai_server("Acknowledged");
+    // Pin the neural router tier to a canned verdict too — otherwise a
+    // live local endpoint makes routing nondeterministic.
+    config.router.jev_endpoint = common::jev_server("general_query", 0.9);
     (config, cache)
 }
 

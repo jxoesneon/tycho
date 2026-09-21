@@ -6,9 +6,9 @@ Tycho is a low-latency voice assistant daemon written in Rust, engineered for mo
 
 - **Compositor Fast-Path**: Sub-millisecond execution for workspace navigation, window focus, layout manipulation, volume changes, and app launching via native IPC.
 - **Local Audio Pipeline**: Continuous ring-buffered capture (PipeWire/ALSA), voice activity detection (VAD), and atomic playback sink with sub-millisecond barge-in interruption.
-- **Model Cache Lifecycle**: Automatic first-run verification and retrieval of model weights directly from HuggingFace Hub — a whisper.cpp ggml model for speech-to-text, a Piper voice for text-to-speech, and the Laya intent classifier for semantic routing.
+- **Model Cache Lifecycle**: Automatic first-run verification and retrieval of model weights directly from HuggingFace Hub — a whisper.cpp ggml model for speech-to-text and a Piper voice for text-to-speech.
 - **Dialogue & Desktop Awareness**: Conversational engine incorporating active desktop context into prompt frames.
-- **Status Orb**: A persistent floating indicator (wlr layer-shell overlay, bottom-center) that pulses with your voice while listening, spins while thinking, and glows while speaking — CPU-rendered, click-through, no tray host required.
+- **Status Orb**: A persistent floating indicator (wlr layer-shell overlay, auto-placed near a screen corner) that pulses with your voice while listening, spins while thinking, and glows while speaking — CPU-rendered, fully interactive (click to listen, double-click for chat, right-click menu, drag to reposition), no tray host required.
 - **Zero-config backend**: On first run, if the default local endpoint has no API key, Tycho installs Ollama — `pacman` or the official install script interactively, otherwise a sudo-free tarball into `~/.local/share/tycho` — starts `ollama serve` detached, and pulls `llama3.2:3b`: install → launch → works. Set `TYCHO_NO_INSTALL=1` to disable automatic installs, or point `[generation] endpoint`/`api_key` (or `TYCHO_ENDPOINT`/`TYCHO_API_KEY`) at any OpenAI-compatible server to manage your own.
 - **Packaging & Sandboxing**: Native distribution configs for systemd user units and sandboxed Flatpak installations.
 

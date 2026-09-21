@@ -29,7 +29,7 @@ Tycho is designed to be fully zero-configuration on first launch. Rather than re
 ```
 
 1. **Detection**: Upon starting the coordinator (`TychoPipelineCoordinator::init`) or launching via CLI, Tycho inspects the resolved model cache directory (`~/.local/share/tycho/models`).
-2. **Missing Weights Check**: If the required STT (`ggml-tiny.en.bin`), TTS voice (`en_US-amy-medium.onnx`), voice config (`en_US-amy-medium.onnx.json`), or router (`laya_intent_classifier.onnx`) files are absent:
+2. **Missing Weights Check**: If the required STT (`ggml-tiny.en.bin`), TTS voice (`en_US-amy-medium.onnx`), or voice config (`en_US-amy-medium.onnx.json`) files are absent — plus the optional router classifier when `models.router_model` is configured:
    - Tycho emits informative logging.
    - It queries the configured HuggingFace endpoint (`https://huggingface.co`).
 3. **Atomic Download**:
@@ -50,7 +50,9 @@ Tycho is designed to be fully zero-configuration on first launch. Rather than re
 | **STT (Whisper, ggml)** | `ggerganov/whisper.cpp` | `ggml-tiny.en.bin` | `~/.local/share/tycho/models/stt/ggml-tiny.en.bin` |
 | **TTS (Piper voice)** | `rhasspy/piper-voices` | `en/en_US/amy/medium/en_US-amy-medium.onnx` | `~/.local/share/tycho/models/tts/en_US-amy-medium.onnx` |
 | **TTS (Voice config)** | `rhasspy/piper-voices` | `en/en_US/amy/medium/en_US-amy-medium.onnx.json` | `~/.local/share/tycho/models/tts/en_US-amy-medium.onnx.json` |
-| **Router (Laya)** | `convaiinnovations/laya` | `model.onnx` | `~/.local/share/tycho/models/router/laya_intent_classifier.onnx` |
+| **Router (Laya, optional)** | `convaiinnovations/laya` | `model.onnx` | `~/.local/share/tycho/models/router/laya_intent_classifier.onnx` |
+
+The router spec is unset by default — the Laya tier currently routes via a built-in keyword classifier, and the ONNX is only fetched when `models.router_model` is explicitly configured for a future neural backend.
 
 ---
 

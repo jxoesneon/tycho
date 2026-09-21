@@ -8,8 +8,10 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AudioConfig {
+    /// Requested capture sample rate — the device may negotiate a
+    /// different native rate; capture always mixes down to mono f32
+    /// regardless of the device's channel count.
     pub sample_rate: u32,
-    pub channels: u16,
     pub buffer_size: usize,
     pub input_device: Option<String>,
     pub output_device: Option<String>,
@@ -19,7 +21,6 @@ impl Default for AudioConfig {
     fn default() -> Self {
         Self {
             sample_rate: 16000,
-            channels: 1,
             buffer_size: 512,
             input_device: None,
             output_device: None,
@@ -154,7 +155,7 @@ impl Default for TtsConfig {
 #[serde(default)]
 pub struct WakeConfig {
     /// Wake-word model name ("hey_jarvis", "alexa", "hey_mycroft",
-    /// "hey_rhasspy", or a custom openWakeWord model) — "off" disables
+    /// "timer", "weather", or a custom openWakeWord model) — "off" disables
     /// wake-word gating so plain VAD activation applies.
     pub model: String,
     /// Detection score threshold, 0.0..=1.0. Lower values catch more
@@ -266,14 +267,10 @@ impl Default for ModelsConfig {
                 expected_min_bytes: 512,
                 subfolder: None,
             },
-            router_model: Some(ModelSpecConfig {
-                repo_id: "convaiinnovations/laya".to_string(),
-                revision: "main".to_string(),
-                filename: "model.onnx".to_string(),
-                target_filename: "laya_intent_classifier.onnx".to_string(),
-                expected_min_bytes: 512 * 1024,
-                subfolder: None,
-            }),
+            // The Laya routing tier is heuristic today; an ONNX intent
+            // classifier can be wired in by setting this spec, but it is
+            // not fetched by default — nothing consumes the file yet.
+            router_model: None,
         }
     }
 }
@@ -374,7 +371,46 @@ pub fn save_ui_patch_to(
     }
     let text =
         toml::to_string_pretty(&doc).map_err(|e| crate::error::Error::Config(e.to_string()))?;
-    std::fs::write(path, text).map_err(crate::error::Error::Io)
+    write_private(path, &text)
+}
+
+/// Maps a settings-window string value to its proper TOML type so a
+/// persisted patch round-trips through `TychoConfig::from_file`.
+/// Unknown keys persist as strings. `None` when a typed value fails
+/// to parse (the caller then skips the write).
+pub fn settings_toml_value(key: &str, value: &str) -> Option<toml::Value> {
+    match key {
+        "ui.orb"
+        | "ui.earcons"
+        | "desktop.auto_detect"
+        | "models.auto_download_on_first_run"
+        | "generation.auto_setup"
+        | "memory.enable_long_term" => value.parse::<bool>().ok().map(toml::Value::Boolean),
+        "vad.energy_threshold"
+        | "router.fast_path_confidence_threshold"
+        | "tts.speed"
+        | "wake.threshold"
+        | "wake.vad_gate"
+        | "generation.temperature" => value.parse::<f64>().ok().map(toml::Value::Float),
+        "vad.min_silence_duration_ms"
+        | "vad.min_speech_duration_ms"
+        | "wake.follow_up_seconds"
+        | "generation.max_tokens"
+        | "memory.max_history_turns" => value.parse::<i64>().ok().map(toml::Value::Integer),
+        _ => Some(toml::Value::String(value.to_string())),
+    }
+}
+
+/// Writes the config file with owner-only permissions — it can carry
+/// API keys (`jev_api_key`, `generation.api_key`, `hf_token`).
+fn write_private(path: &std::path::Path, text: &str) -> crate::error::Result<()> {
+    std::fs::write(path, text).map_err(crate::error::Error::Io)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+    }
+    Ok(())
 }
 
 /// Writes a single dotted-key setting (e.g. `vad.energy_threshold`)
@@ -429,7 +465,7 @@ pub fn save_config_patch_to(
     }
     let text =
         toml::to_string_pretty(&doc).map_err(|e| crate::error::Error::Config(e.to_string()))?;
-    std::fs::write(path, text).map_err(crate::error::Error::Io)
+    write_private(path, &text)
 }
 
 /// Path of the config file `load()`/`save_ui_patch` operate on, whether

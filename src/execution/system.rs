@@ -166,14 +166,18 @@ impl SystemExecutor {
         Ok(res.stdout.to_lowercase().contains("yes"))
     }
 
-    /// Launches a detached application process.
+    /// Launches a detached application process. A reaper task awaits the
+    /// child so exited apps don't linger as zombies under the daemon.
     pub async fn launch(program: &str) -> Result<()> {
-        Command::new(program)
+        let mut child = Command::new(program)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
             .map_err(|e| Error::Audio(format!("failed to launch '{}': {}", program, e)))?;
+        tokio::spawn(async move {
+            let _ = child.wait().await;
+        });
         Ok(())
     }
 }

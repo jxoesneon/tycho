@@ -35,12 +35,11 @@ async fn test_kde_backend_basics() {
     assert_eq!(windows.len(), 1);
 
     let workspaces = backend.list_workspaces().await.unwrap();
-    assert_eq!(workspaces.len(), 4);
+    // Exactly the desktops KWin reports — no fabricated entries.
+    assert_eq!(workspaces.len(), 3);
     assert!(workspaces[0].is_active);
-    // Names come from the VirtualDesktopManager.desktops property; the
-    // fourth workspace falls back to a generated name.
     assert_eq!(workspaces[0].name, "Main");
-    assert_eq!(workspaces[3].name, "Desktop 4");
+    assert_eq!(workspaces[2].name, "Media");
 }
 
 #[tokio::test]

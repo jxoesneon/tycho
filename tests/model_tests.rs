@@ -100,6 +100,7 @@ async fn test_model_manager_second_run_skips_pull() {
 async fn test_model_manager_paths_and_tilde() {
     let config = ModelsConfig {
         cache_dir: std::path::PathBuf::from("~/tycho-test-cache"),
+        router_model: common::test_models_config().router_model,
         ..Default::default()
     };
     let manager = ModelManager::new(config);

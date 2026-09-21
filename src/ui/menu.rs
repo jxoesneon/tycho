@@ -270,6 +270,11 @@ pub fn text_width(text: &str) -> f32 {
     text_width_px(text, FONT_PX)
 }
 
+/// Measured advance width of a single char at the panel text size.
+pub fn char_width(c: char) -> f32 {
+    font().metrics(c, FONT_PX).advance_width
+}
+
 /// Measured advance width of `text` at `px` size.
 pub fn text_width_px(text: &str, px: f32) -> f32 {
     let f = font();

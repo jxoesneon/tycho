@@ -24,6 +24,9 @@ pub struct UnifiedRouter {
     pub laya: LayaDecisionModel,
     pub jev: JevSemanticRouter,
     pub fast_path_threshold: f32,
+    /// Whether the local Laya heuristic tier runs between the strict
+    /// grammar and the Jev LLM (`router.fallback_to_laya` in config).
+    pub laya_enabled: bool,
 }
 
 impl UnifiedRouter {
@@ -38,6 +41,7 @@ impl UnifiedRouter {
             laya: LayaDecisionModel::new(laya_repo),
             jev: JevSemanticRouter::new(jev_key, jev_endpoint, jev_model),
             fast_path_threshold,
+            laya_enabled: true,
         }
     }
 
@@ -52,11 +56,13 @@ impl UnifiedRouter {
             };
         }
 
-        if let Some(decision) = self
-            .laya
-            .select_option(text, CANONICAL_DESKTOP_OPTIONS)
-            .await
-        {
+        if let Some(decision) = if self.laya_enabled {
+            self.laya
+                .select_option(text, CANONICAL_DESKTOP_OPTIONS)
+                .await
+        } else {
+            None
+        } {
             if decision.confidence >= self.fast_path_threshold
                 && decision.best_option != "general_query"
             {

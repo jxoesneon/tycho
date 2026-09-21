@@ -154,60 +154,64 @@ fn open_capture_stream(
     let tx_cb = tx.clone();
     let running_cb = running.clone();
 
-    let push = move |mono: f32| {
+    // One lock + one allocation pass per audio callback: the whole mono
+    // block is appended, then complete frames are drained in a single
+    // contiguous move.
+    fn push_all(
+        pending: &std::sync::Mutex<Vec<f32>>,
+        tx: &tokio::sync::mpsc::Sender<Vec<f32>>,
+        running: &std::sync::atomic::AtomicBool,
+        frame_size: usize,
+        mono: &mut dyn Iterator<Item = f32>,
+    ) {
         let mut frames = Vec::new();
         {
-            let mut buf = pending_cb.lock().unwrap();
-            buf.push(mono);
-            while buf.len() >= frame_size {
-                frames.push(buf.drain(..frame_size).collect::<Vec<f32>>());
+            let mut buf = pending.lock().unwrap();
+            buf.extend(mono);
+            let complete = buf.len() / frame_size * frame_size;
+            if complete > 0 {
+                let drained: Vec<f32> = buf.drain(..complete).collect();
+                frames.extend(drained.chunks_exact(frame_size).map(|chunk| chunk.to_vec()));
             }
         }
         for frame in frames {
-            if !running_cb.load(Ordering::SeqCst) {
+            if !running.load(Ordering::SeqCst) {
                 return;
             }
             // Never block a real-time audio callback: a full channel
             // drops the frame; the consumer drains the backlog after
             // processing so stale audio cannot masquerade as live speech.
-            if tx_cb.try_send(frame).is_err() {
+            if tx.try_send(frame).is_err() {
                 continue;
             }
         }
-    };
+    }
+
+    macro_rules! input_callback {
+        ($mono:ident) => {
+            move |data: &[_], _| {
+                push_all(
+                    &pending_cb,
+                    &tx_cb,
+                    &running_cb,
+                    frame_size,
+                    &mut $mono(data, channels),
+                );
+            }
+        };
+    }
 
     let err_cb = |e| tracing::warn!("capture stream error: {}", e);
     let stream = match supported.sample_format() {
-        SampleFormat::F32 => device.build_input_stream(
-            config,
-            move |data: &[f32], _| {
-                for s in mono_from_f32(data, channels) {
-                    push(s);
-                }
-            },
-            err_cb,
-            None,
-        ),
-        SampleFormat::I16 => device.build_input_stream(
-            config,
-            move |data: &[i16], _| {
-                for s in mono_from_i16(data, channels) {
-                    push(s);
-                }
-            },
-            err_cb,
-            None,
-        ),
-        SampleFormat::U16 => device.build_input_stream(
-            config,
-            move |data: &[u16], _| {
-                for s in mono_from_u16(data, channels) {
-                    push(s);
-                }
-            },
-            err_cb,
-            None,
-        ),
+        SampleFormat::F32 => {
+            device.build_input_stream(config, input_callback!(mono_from_f32), err_cb, None)
+        }
+        SampleFormat::I16 => {
+            device.build_input_stream(config, input_callback!(mono_from_i16), err_cb, None)
+        }
+        SampleFormat::U16 => {
+            device.build_input_stream(config, input_callback!(mono_from_u16), err_cb, None)
+        }
         fmt => return Err(format!("unsupported input sample format: {:?}", fmt)),
     }
     .map_err(|e| format!("build input stream: {}", e))?;

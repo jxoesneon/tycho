@@ -9,6 +9,7 @@ use super::traits::{DesktopBackend, DesktopError};
 #[cfg(any(feature = "hyprland", feature = "kde"))]
 use std::env;
 use std::sync::Arc;
+use tracing::{info, warn};
 
 #[derive(Clone)]
 pub struct DesktopManager {
@@ -16,6 +17,69 @@ pub struct DesktopManager {
 }
 
 impl DesktopManager {
+    /// Binds a desktop backend according to `desktop.backend` /
+    /// `desktop.auto_detect` config: a named backend is tried directly,
+    /// "auto" runs session detection (unless `auto_detect` is off, which
+    /// selects the mock), and "mock"/"headless" forces the in-memory
+    /// backend. Falls back to the mock with a warning when the requested
+    /// or detected compositor doesn't answer.
+    pub async fn init_with_config(backend: &str, auto_detect: bool) -> Self {
+        match backend.trim().to_lowercase().as_str() {
+            "hyprland" => return Self::init_hyprland().await,
+            "kde" | "plasma" => return Self::init_kde().await,
+            "mock" | "headless" | "none" => {
+                info!("desktop backend: mock (configured)");
+                return Self::init_mock();
+            }
+            _ => {}
+        }
+        if !auto_detect {
+            warn!("desktop.backend=auto but auto_detect=false; desktop control disabled");
+            return Self::init_mock();
+        }
+        Self::init_auto().await
+    }
+
+    #[cfg(feature = "hyprland")]
+    async fn init_hyprland() -> Self {
+        match HyprlandBackend::new().await {
+            Ok(b) => Self {
+                backend: Arc::new(b),
+            },
+            Err(e) => {
+                warn!("hyprland backend requested but failed to connect ({e}); desktop control simulated");
+                Self::init_mock()
+            }
+        }
+    }
+
+    #[cfg(not(feature = "hyprland"))]
+    async fn init_hyprland() -> Self {
+        warn!("hyprland backend requested but not compiled in; desktop control simulated");
+        Self::init_mock()
+    }
+
+    #[cfg(feature = "kde")]
+    async fn init_kde() -> Self {
+        match KdeBackend::new().await {
+            Ok(b) => Self {
+                backend: Arc::new(b),
+            },
+            Err(e) => {
+                warn!(
+                    "kde backend requested but failed to connect ({e}); desktop control simulated"
+                );
+                Self::init_mock()
+            }
+        }
+    }
+
+    #[cfg(not(feature = "kde"))]
+    async fn init_kde() -> Self {
+        warn!("kde backend requested but not compiled in; desktop control simulated");
+        Self::init_mock()
+    }
+
     /// Detects the running compositor and binds its backend, falling back
     /// to the in-memory mock when no real compositor answers — or when no
     /// compositor feature was compiled in.
@@ -27,6 +91,7 @@ impl DesktopManager {
                 .to_lowercase();
             if env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() || xdg.contains("hyprland") {
                 if let Ok(b) = HyprlandBackend::new().await {
+                    info!("desktop backend: hyprland (auto-detected)");
                     return Self {
                         backend: Arc::new(b),
                     };
@@ -44,6 +109,7 @@ impl DesktopManager {
                 || xdg.contains("plasma");
             if kde_session {
                 if let Ok(b) = KdeBackend::new().await {
+                    info!("desktop backend: kde (auto-detected)");
                     return Self {
                         backend: Arc::new(b),
                     };
@@ -51,9 +117,8 @@ impl DesktopManager {
             }
         }
 
-        Self {
-            backend: Arc::new(MockBackend::new()),
-        }
+        warn!("no supported compositor detected; desktop control simulated");
+        Self::init_mock()
     }
 
     pub fn with_backend(backend: Arc<dyn DesktopBackend>) -> Self {
@@ -68,6 +133,11 @@ impl DesktopManager {
 
     pub fn backend(&self) -> &dyn DesktopBackend {
         self.backend.as_ref()
+    }
+
+    /// Name of the bound backend ("hyprland", "kde", "mock").
+    pub fn backend_name(&self) -> &'static str {
+        self.backend.name()
     }
 
     pub async fn get_context_summary(&self) -> String {

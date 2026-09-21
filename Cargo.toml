@@ -83,6 +83,19 @@ name = "ui_tests"
 path = "tests/ui_tests.rs"
 required-features = ["orb"]
 
+# Orb/UI examples only build with the orb feature (Wayland deps).
+[[example]]
+name = "orb_demo"
+required-features = ["orb"]
+
+[[example]]
+name = "orb_input_demo"
+required-features = ["orb"]
+
+[[example]]
+name = "render_states"
+required-features = ["orb"]
+
 [[bin]]
 name = "tycho"
 path = "src/main.rs"

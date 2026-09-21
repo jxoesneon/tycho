@@ -12,7 +12,7 @@ fn tycho_cmd(home: &std::path::Path) -> Command {
     std::fs::write(
         &config_path,
         format!(
-            "[models]\nhf_endpoint = \"{}\"\ncache_dir = \"{}\"\n\n[models.stt_model]\nrepo_id = \"ggerganov/whisper.cpp\"\nrevision = \"main\"\nfilename = \"ggml-tiny.en.bin\"\ntarget_filename = \"ggml-tiny.en.bin\"\nexpected_min_bytes = 1024\n\n[generation]\nendpoint = \"{}\"\nauto_setup = false\n",
+            "[models]\nhf_endpoint = \"{}\"\ncache_dir = \"{}\"\n\n[models.stt_model]\nrepo_id = \"ggerganov/whisper.cpp\"\nrevision = \"main\"\nfilename = \"ggml-tiny.en.bin\"\ntarget_filename = \"ggml-tiny.en.bin\"\nexpected_min_bytes = 1024\n\n[models.router_model]\nrepo_id = \"convaiinnovations/laya\"\nrevision = \"main\"\nfilename = \"model.onnx\"\ntarget_filename = \"laya_intent_classifier.onnx\"\nexpected_min_bytes = 512\n\n[generation]\nendpoint = \"{}\"\nauto_setup = false\n",
             common::hf_server(common::model_weights()),
             home.join("models").display(),
             common::openai_server("Acknowledged"),
