@@ -50,6 +50,12 @@ jobs:
         run: cargo install --locked cross@0.2.5
       - name: Build Binary (Cross)
         if: ${{ matrix.use_cross }}
+        env:
+          # Pre-build in Cross.toml installs these inside the container.
+          LIBCLANG_PATH: /usr/lib/llvm-10/lib
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc-9
+          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++-9
+          BINDGEN_EXTRA_CLANG_ARGS: --sysroot=/usr/aarch64-linux-gnu
         run: cross build --release --target ${{ matrix.target }}
       - name: Strip Binary
         run: |
