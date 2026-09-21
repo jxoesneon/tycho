@@ -1,5 +1,6 @@
 //! Conversational generation, persona conditioning, and prompt builders.
 
+pub mod bootstrap;
 pub mod client;
 pub mod personas;
 pub mod prompts;

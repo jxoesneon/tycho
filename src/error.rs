@@ -14,9 +14,16 @@ pub enum Error {
     Toml(toml::de::Error),
     Desktop(DesktopError),
     Audio(String),
-    ModelDownload { url: String, message: String },
+    ModelDownload {
+        url: String,
+        message: String,
+    },
     ModelNotFound(PathBuf),
-    ModelCorrupted { path: PathBuf, expected_bytes: u64, actual_bytes: u64 },
+    ModelCorrupted {
+        path: PathBuf,
+        expected_bytes: u64,
+        actual_bytes: u64,
+    },
     ModelMissing(String),
     Routing(String),
     Transcription(String),
@@ -33,10 +40,20 @@ impl fmt::Display for Error {
             Self::Toml(err) => write!(f, "TOML configuration error: {}", err),
             Self::Desktop(err) => write!(f, "{}", err),
             Self::Audio(msg) => write!(f, "audio error: {}", msg),
-            Self::ModelDownload { url, message } => write!(f, "model download from {} failed: {}", url, message),
+            Self::ModelDownload { url, message } => {
+                write!(f, "model download from {} failed: {}", url, message)
+            }
             Self::ModelNotFound(path) => write!(f, "model file missing: {:?}", path),
-            Self::ModelCorrupted { path, expected_bytes, actual_bytes } => {
-                write!(f, "corrupt model at {:?} (expected {} bytes, got {})", path, expected_bytes, actual_bytes)
+            Self::ModelCorrupted {
+                path,
+                expected_bytes,
+                actual_bytes,
+            } => {
+                write!(
+                    f,
+                    "corrupt model at {:?} (expected {} bytes, got {})",
+                    path, expected_bytes, actual_bytes
+                )
             }
             Self::ModelMissing(msg) => write!(f, "model missing: {}", msg),
             Self::Routing(msg) => write!(f, "command routing error: {}", msg),

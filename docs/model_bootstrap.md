@@ -1,4 +1,4 @@
-# Tycho Automated ONNX Model Pulling & HuggingFace First-Run Bootstrap
+# Tycho Automated Model Pulling & HuggingFace First-Run Bootstrap
 
 Tycho is designed to be fully zero-configuration on first launch. Rather than requiring users to manually hunt down, convert, or place neural network weights across disparate system directories, Tycho incorporates an automated **First-Run HuggingFace Model Puller**.
 
@@ -14,9 +14,9 @@ Tycho is designed to be fully zero-configuration on first launch. Rather than re
                  ┌────────────────┴────────────────┐
                  │ NO                              │ YES
                  ▼                                 ▼
-      [ Query HuggingFace Hub ]        [ Load Local ONNX Weights ]
+      [ Query HuggingFace Hub ]        [ Load Local Model Weights ]
                  │                                 │
-     Stream ONNX Weights to *.tmp                  │
+       Stream Weights to *.tmp                     │
                  │                                 │
       Verify File Integrity (Bytes)                │
                  │                                 │
@@ -29,7 +29,7 @@ Tycho is designed to be fully zero-configuration on first launch. Rather than re
 ```
 
 1. **Detection**: Upon starting the coordinator (`TychoPipelineCoordinator::init`) or launching via CLI, Tycho inspects the resolved model cache directory (`~/.local/share/tycho/models`).
-2. **Missing Weights Check**: If the required ASR/STT (`whisper-tiny.en.onnx`), TTS (`kokoro-v0_19.onnx`), or voice tokens (`voices.bin`) are absent:
+2. **Missing Weights Check**: If the required STT (`ggml-tiny.en.bin`), TTS voice (`en_US-amy-medium.onnx`), voice config (`en_US-amy-medium.onnx.json`), or router (`laya_intent_classifier.onnx`) files are absent:
    - Tycho emits informative logging.
    - It queries the configured HuggingFace endpoint (`https://huggingface.co`).
 3. **Atomic Download**:
@@ -47,9 +47,9 @@ Tycho is designed to be fully zero-configuration on first launch. Rather than re
 
 | Subsystem | HuggingFace Repository | Repository Path | Default Local Target |
 | :--- | :--- | :--- | :--- |
-| **STT (Whisper)** | `onnx-community/whisper-tiny.en` | `onnx/model.onnx` | `~/.local/share/tycho/models/stt/whisper-tiny.en.onnx` |
-| **TTS (Kokoro)** | `onnx-community/Kokoro-82M-ONNX` | `kokoro-v0_19.onnx` | `~/.local/share/tycho/models/tts/kokoro-v0_19.onnx` |
-| **TTS (Voices)** | `onnx-community/Kokoro-82M-ONNX` | `voices.bin` | `~/.local/share/tycho/models/tts/voices.bin` |
+| **STT (Whisper, ggml)** | `ggerganov/whisper.cpp` | `ggml-tiny.en.bin` | `~/.local/share/tycho/models/stt/ggml-tiny.en.bin` |
+| **TTS (Piper voice)** | `rhasspy/piper-voices` | `en/en_US/amy/medium/en_US-amy-medium.onnx` | `~/.local/share/tycho/models/tts/en_US-amy-medium.onnx` |
+| **TTS (Voice config)** | `rhasspy/piper-voices` | `en/en_US/amy/medium/en_US-amy-medium.onnx.json` | `~/.local/share/tycho/models/tts/en_US-amy-medium.onnx.json` |
 | **Router (Laya)** | `convaiinnovations/laya` | `model.onnx` | `~/.local/share/tycho/models/router/laya_intent_classifier.onnx` |
 
 ---
@@ -66,25 +66,25 @@ hf_endpoint = "https://huggingface.co"
 # hf_token = "hf_..." # (Or set HF_TOKEN environment variable)
 
 [models.stt_model]
-repo_id = "onnx-community/whisper-tiny.en"
+repo_id = "ggerganov/whisper.cpp"
 revision = "main"
-filename = "onnx/model.onnx"
-target_filename = "whisper-tiny.en.onnx"
-expected_min_bytes = 1048576
+filename = "ggml-tiny.en.bin"
+target_filename = "ggml-tiny.en.bin"
+expected_min_bytes = 33554432
 
 [models.tts_model]
-repo_id = "onnx-community/Kokoro-82M-ONNX"
+repo_id = "rhasspy/piper-voices"
 revision = "main"
-filename = "kokoro-v0_19.onnx"
-target_filename = "kokoro-v0_19.onnx"
+filename = "en/en_US/amy/medium/en_US-amy-medium.onnx"
+target_filename = "en_US-amy-medium.onnx"
 expected_min_bytes = 1048576
 
 [models.tts_voices]
-repo_id = "onnx-community/Kokoro-82M-ONNX"
+repo_id = "rhasspy/piper-voices"
 revision = "main"
-filename = "voices.bin"
-target_filename = "voices.bin"
-expected_min_bytes = 10240
+filename = "en/en_US/amy/medium/en_US-amy-medium.onnx.json"
+target_filename = "en_US-amy-medium.onnx.json"
+expected_min_bytes = 512
 ```
 
 ---
@@ -97,6 +97,50 @@ Users can pre-fetch, check, or force re-download models at any time using the Ty
 # Verify models and download if missing
 tycho pull-models
 
-# Force clean re-download of all latest ONNX assets from HuggingFace
+# Force clean re-download of all model assets from HuggingFace
 tycho pull-models --force
 ```
+
+---
+
+## 5. TTS Engines & Voices — Catalog and Auto-Getters
+
+The settings window lists **every supported engine** (`auto`, `piper`,
+`kokoro`, `vibevoice`, `espeak-ng`, `espeak`, `flite`) and **every
+managed voice**, installed or not. Selecting an option that is absent
+triggers its automatic getter, then the synthesizer is rebuilt live:
+
+| Selection | Getter |
+|---|---|
+| piper voice (`en_US-*` / `en_GB-*`) | `<voice>.onnx` + `.onnx.json` from `rhasspy/piper-voices` (`v1.0.0`) into `<cache>/tts/` |
+| kokoro engine / `af_*`-style voice | python venv at `~/.local/share/tycho/kokoro` (`kokoro-onnx` + `soundfile` + WAV-stdout wrapper) and `kokoro-v1.0.onnx` / `voices-v1.0.bin` from the `thewh1teagle/kokoro-onnx` `model-files-v1.0` release |
+| vibevoice engine | clone `microsoft/VibeVoice` + venv at `~/.local/share/tycho/vibevoice` (`pip install -e`, multi-GB; CPU is slow — GPU recommended) |
+| `espeak-ng` / `espeak` / `flite` | system packages — no getter; an actionable error is reported |
+| `auto` | best available at synth time: piper → kokoro → espeak-ng → espeak → flite |
+
+Notes:
+
+- `TYCHO_NO_INSTALL` disables every getter; failures are logged, never
+  fatal, and the pipeline keeps speaking through the espeak fallback
+  chain.
+- Files under a size floor (pre-allocated `ONNX_WEIGHT_CONTAINER_V1`
+  stubs) do not count as installed and are re-fetched.
+- `tts.engine`, `tts.voice`, and `tts.speed` apply live after
+  provisioning completes — no restart needed.
+
+---
+
+## 6. Wake-Word Detection — Optional openWakeWord Sidecar
+
+`[wake]` in `tycho.toml` is **off by default** — plain VAD activation.
+Setting `wake.model` to a bundled openWakeWord name (`hey_jarvis`,
+`alexa`, `hey_mycroft`, `timer`, `weather`) or a path to a custom
+`.onnx` model gates the mic behind wake-word detection:
+
+| Piece | Detail |
+|---|---|
+| sidecar | python venv at `~/.local/share/tycho/wake` (`openwakeword` + `onnxruntime`) + `oww_daemon.py` streaming wrapper |
+| protocol | s16le 16 kHz mono on stdin → `READY <model>` handshake → `<model> <score>` lines on stdout; stderr appends to `~/.local/state/tycho/wake.log` |
+| gating | detections above `wake.threshold` (default 0.5) open an utterance exactly like an orb click; ambient VAD never fires while the engine is live; a 2 s cooldown plus a post-utterance drain prevents stale-score retriggers |
+| provisioning | automatic getter on first use or settings selection — honors `TYCHO_NO_INSTALL`; spawn runs on a worker thread so python import time never stalls the audio loop; failures degrade to VAD, never a crash |
+| live config | `wake.model` / `wake.threshold` persist and hot-swap the sidecar without restart; `off` kills the engine and restores VAD |

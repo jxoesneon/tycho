@@ -1,7 +1,8 @@
 //! Speech synthesis subsystem.
 
-pub mod kokoro;
+pub mod catalog;
+pub mod engine;
 pub mod traits;
 
-pub use kokoro::KokoroEngine;
+pub use engine::SpeechSynthesizer;
 pub use traits::TextToSpeech;

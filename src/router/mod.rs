@@ -27,32 +27,61 @@ pub struct UnifiedRouter {
 }
 
 impl UnifiedRouter {
-    pub fn new(laya_repo: impl Into<String>, jev_key: Option<String>, fast_path_threshold: f32) -> Self {
+    pub fn new(
+        laya_repo: impl Into<String>,
+        jev_key: Option<String>,
+        jev_endpoint: impl Into<String>,
+        jev_model: impl Into<String>,
+        fast_path_threshold: f32,
+    ) -> Self {
         Self {
             laya: LayaDecisionModel::new(laya_repo),
-            jev: JevSemanticRouter::new(jev_key),
+            jev: JevSemanticRouter::new(jev_key, jev_endpoint, jev_model),
             fast_path_threshold,
         }
     }
 
     pub async fn route(&self, text: &str) -> RoutingTier {
-        if let Some(decision) = self.laya.select_option(text, CANONICAL_DESKTOP_OPTIONS).await {
-            if decision.confidence >= self.fast_path_threshold && decision.best_option != "general_query" {
-                let parsed = ParsedDesktopCommand::parse(text);
+        // Deterministic grammar first — an exact command phrase skips
+        // both neural routers and their model round-trips entirely.
+        if let Some(cmd) = ParsedDesktopCommand::parse(text) {
+            return RoutingTier::System1FastPath {
+                intent: cmd.intent,
+                parameter: cmd.parameter,
+                confidence: 1.0,
+            };
+        }
+
+        if let Some(decision) = self
+            .laya
+            .select_option(text, CANONICAL_DESKTOP_OPTIONS)
+            .await
+        {
+            if decision.confidence >= self.fast_path_threshold
+                && decision.best_option != "general_query"
+            {
+                let parameter = match ParsedDesktopCommand::parse(text).and_then(|p| p.parameter) {
+                    Some(p) => Some(p),
+                    None => self.laya.extract_parameter(text).await,
+                };
                 return RoutingTier::System1FastPath {
                     intent: decision.best_option,
-                    parameter: parsed.and_then(|p| p.parameter),
+                    parameter,
                     confidence: decision.confidence,
                 };
             }
         }
 
         if let Ok(decision) = self.jev.route(text, CANONICAL_DESKTOP_OPTIONS).await {
-            if decision.confidence >= self.fast_path_threshold && decision.best_option != "general_query" {
-                let parsed = ParsedDesktopCommand::parse(text);
+            if decision.confidence >= self.fast_path_threshold
+                && decision.best_option != "general_query"
+            {
+                let parameter = ParsedDesktopCommand::parse(text)
+                    .and_then(|p| p.parameter)
+                    .or_else(|| desktop_intents::neural_parameter(&decision.best_option, text));
                 return RoutingTier::System1FastPath {
                     intent: decision.best_option,
-                    parameter: parsed.and_then(|p| p.parameter),
+                    parameter,
                     confidence: decision.confidence,
                 };
             }

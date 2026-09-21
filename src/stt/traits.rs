@@ -12,5 +12,9 @@ pub struct TranscriptionResult {
 
 #[async_trait]
 pub trait SpeechToText: Send + Sync {
-    async fn transcribe_pcm(&self, samples: &[f32], sample_rate: u32) -> Result<TranscriptionResult>;
+    async fn transcribe_pcm(
+        &self,
+        samples: &[f32],
+        sample_rate: u32,
+    ) -> Result<TranscriptionResult>;
 }

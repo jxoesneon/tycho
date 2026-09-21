@@ -1,4 +1,4 @@
-//! Short-term sliding-window dialogue memory and vector interface.
+//! Sliding-window dialogue memory and persistent JSONL turn store.
 
 pub mod context;
 pub mod mempalace;

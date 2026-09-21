@@ -12,11 +12,18 @@ pub mod pipeline;
 pub mod router;
 pub mod stt;
 pub mod tts;
+#[cfg(feature = "orb")]
+pub mod ui;
+pub mod wake;
 
-pub use config::{ModelsConfig, ModelSpecConfig, TychoConfig};
+pub use config::{ModelSpecConfig, ModelsConfig, TychoConfig};
+#[cfg(feature = "hyprland")]
+pub use desktop::HyprlandBackend;
+#[cfg(feature = "kde")]
+pub use desktop::KdeBackend;
 pub use desktop::{
-    BackendCapabilities, DesktopBackend, DesktopError, DesktopEvent, DesktopManager, HyprlandBackend, KdeBackend,
-    MockBackend, WindowContext, WindowGeometry, WorkspaceContext,
+    BackendCapabilities, DesktopBackend, DesktopError, DesktopEvent, DesktopManager, MockBackend,
+    WindowContext, WindowGeometry, WorkspaceContext,
 };
 pub use error::{Error, Result};
 pub use execution::{DesktopExecutionResult, DesktopExecutor, SystemCommandResult, SystemExecutor};

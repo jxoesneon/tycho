@@ -1,0 +1,9 @@
+# cross-rs container setup: the stock aarch64 image lacks the build
+# inputs our dependency build scripts need — cmake/clang for
+# whisper.cpp + bindgen, and the target-arch alsa headers for cpal.
+[target.aarch64-unknown-linux-gnu]
+pre-build = [
+    "dpkg --add-architecture arm64",
+    "apt-get update -y",
+    "apt-get install -y --no-install-recommends cmake clang libclang-dev pkg-config libasound2-dev:arm64",
+]

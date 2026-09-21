@@ -29,6 +29,48 @@ impl VoiceActivityDetector {
         }
     }
 
+    /// Number of recent frames worth buffering before a confirmed speech
+    /// onset so the beginning of an utterance is not clipped.
+    pub fn preroll_frames(&self) -> usize {
+        self.min_speech_frames
+    }
+
+    /// Live-adjustable voice energy gate (settings UI writes this while
+    /// the loop runs).
+    pub fn set_energy_threshold(&mut self, threshold: f32) {
+        self.energy_threshold = threshold;
+    }
+
+    /// Live-adjustable end-of-utterance silence window in milliseconds.
+    pub fn set_min_silence_ms(&mut self, ms: u64) {
+        self.min_silence_frames = (ms / 20) as usize;
+    }
+
+    /// Live-adjustable minimum speech duration before an utterance is
+    /// confirmed, in milliseconds (20 ms frames).
+    pub fn set_min_speech_ms(&mut self, ms: u64) {
+        self.min_speech_frames = (ms / 20) as usize;
+    }
+
+    /// Clears in-progress detection state — used when buffered frames
+    /// are discarded after processing so stale audio cannot leave the
+    /// detector mid-utterance.
+    pub fn reset(&mut self) {
+        self.speech_frame_count = 0;
+        self.silence_frame_count = 0;
+        self.current_state = VadState::Silence;
+    }
+
+    /// True while the detector is between onset and end-of-utterance —
+    /// used to keep a wake-word hit from stacking a second capture on
+    /// top of speech already in progress.
+    pub fn in_speech(&self) -> bool {
+        matches!(
+            self.current_state,
+            VadState::SpeechStart | VadState::InSpeech
+        )
+    }
+
     pub fn calculate_energy(frame: &[f32]) -> f32 {
         if frame.is_empty() {
             return 0.0;

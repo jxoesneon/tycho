@@ -20,7 +20,11 @@ pub struct HuggingFaceModelSpec {
 }
 
 impl HuggingFaceModelSpec {
-    pub fn new(repo_id: impl Into<String>, filename: impl Into<String>, target_filename: impl Into<String>) -> Self {
+    pub fn new(
+        repo_id: impl Into<String>,
+        filename: impl Into<String>,
+        target_filename: impl Into<String>,
+    ) -> Self {
         Self {
             repo_id: repo_id.into(),
             revision: "main".to_string(),
@@ -51,9 +55,19 @@ impl HuggingFaceModelSpec {
     pub fn resolve_url(&self, endpoint: &str) -> String {
         let base = endpoint.trim_end_matches('/');
         if let Some(ref sub) = self.subfolder {
-            format!("{}/{}/resolve/{}/{}/{}", base, self.repo_id, self.revision, sub.trim_matches('/'), self.filename)
+            format!(
+                "{}/{}/resolve/{}/{}/{}",
+                base,
+                self.repo_id,
+                self.revision,
+                sub.trim_matches('/'),
+                self.filename
+            )
         } else {
-            format!("{}/{}/resolve/{}/{}", base, self.repo_id, self.revision, self.filename)
+            format!(
+                "{}/{}/resolve/{}/{}",
+                base, self.repo_id, self.revision, self.filename
+            )
         }
     }
 }

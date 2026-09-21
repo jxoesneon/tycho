@@ -1,21 +1,26 @@
 # Cargo deny configuration
 
 [advisories]
-vulnerability = "deny"
-unmaintained = "warn"
+# Any vulnerability fails the gate; informational advisories
+# (unmaintained/unsound) surface as warnings by default.
+db-urls = ["https://github.com/rustsec/advisory-db"]
 yanked = "deny"
 ignore = []
 
 [licenses]
-unlicensed = "deny"
+# Schema v2: crates with no license expression are denied by default.
+version = 2
 allow = [
     "MIT",
     "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
     "BSD-3-Clause",
     "BSD-2-Clause",
+    "CDLA-Permissive-2.0",
     "ISC",
-    "CC0-1.0",
-    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
 ]
 confidence-threshold = 0.8
 

@@ -2,11 +2,12 @@
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AssistantPersona {
     Sentinel,
     Scholar,
+    #[default]
     Consigliere,
     Companion,
 }
@@ -46,12 +47,9 @@ impl AssistantPersona {
             }
         };
 
-        format!("{}\nActive Desktop Environment Context:\n{}", base, desktop_context)
-    }
-}
-
-impl Default for AssistantPersona {
-    fn default() -> Self {
-        Self::Consigliere
+        format!(
+            "{}\nActive Desktop Environment Context:\n{}",
+            base, desktop_context
+        )
     }
 }

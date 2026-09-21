@@ -32,6 +32,12 @@ impl ConversationHistory {
         });
     }
 
+    /// The recorded turns, oldest first — used to thread real
+    /// role-tagged messages into chat completion requests.
+    pub fn turns(&self) -> impl Iterator<Item = &ConversationTurn> {
+        self.turns.iter()
+    }
+
     pub fn formatted_dialogue(&self) -> String {
         self.turns
             .iter()

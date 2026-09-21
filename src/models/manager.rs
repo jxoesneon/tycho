@@ -19,11 +19,16 @@ pub struct ModelInventory {
 #[derive(Debug, Clone)]
 pub struct ModelManager {
     pub config: ModelsConfig,
+    client: reqwest::Client,
 }
 
 impl ModelManager {
     pub fn new(config: ModelsConfig) -> Self {
-        Self { config }
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(600))
+            .build()
+            .expect("HTTP client with only a timeout cannot fail to build");
+        Self { config, client }
     }
 
     pub fn resolved_cache_dir(&self) -> PathBuf {
@@ -31,20 +36,28 @@ impl ModelManager {
     }
 
     pub fn stt_model_target_path(&self) -> PathBuf {
-        self.resolved_cache_dir().join("stt").join(&self.config.stt_model.target_filename)
+        self.resolved_cache_dir()
+            .join("stt")
+            .join(&self.config.stt_model.target_filename)
     }
 
     pub fn tts_model_target_path(&self) -> PathBuf {
-        self.resolved_cache_dir().join("tts").join(&self.config.tts_model.target_filename)
+        self.resolved_cache_dir()
+            .join("tts")
+            .join(&self.config.tts_model.target_filename)
     }
 
     pub fn tts_voices_target_path(&self) -> PathBuf {
-        self.resolved_cache_dir().join("tts").join(&self.config.tts_voices.target_filename)
+        self.resolved_cache_dir()
+            .join("tts")
+            .join(&self.config.tts_voices.target_filename)
     }
 
     pub fn router_model_target_path(&self) -> Option<PathBuf> {
         self.config.router_model.as_ref().map(|spec| {
-            self.resolved_cache_dir().join("router").join(&spec.target_filename)
+            self.resolved_cache_dir()
+                .join("router")
+                .join(&spec.target_filename)
         })
     }
 
@@ -74,23 +87,33 @@ impl ModelManager {
                 )));
             }
 
-            info!("fetching model weights from HuggingFace hub ({})", self.config.hf_endpoint);
+            info!(
+                "fetching model weights from HuggingFace hub ({})",
+                self.config.hf_endpoint
+            );
 
             if !stt_dest.exists() {
-                self.pull_model_spec(&self.config.stt_model.to_hf_spec(), &stt_dest).await?;
+                self.pull_model_spec(&self.config.stt_model.to_hf_spec(), &stt_dest)
+                    .await?;
             }
 
             if !tts_dest.exists() {
-                self.pull_model_spec(&self.config.tts_model.to_hf_spec(), &tts_dest).await?;
+                self.pull_model_spec(&self.config.tts_model.to_hf_spec(), &tts_dest)
+                    .await?;
             }
 
             if !voices_dest.exists() {
-                self.pull_model_spec(&self.config.tts_voices.to_hf_spec(), &voices_dest).await?;
+                self.pull_model_spec(&self.config.tts_voices.to_hf_spec(), &voices_dest)
+                    .await?;
             }
 
-            if let (Some(router_spec), Some(router_dest)) = (&self.config.router_model, self.router_model_target_path()) {
+            if let (Some(router_spec), Some(router_dest)) =
+                (&self.config.router_model, self.router_model_target_path())
+            {
                 if !router_dest.exists() {
-                    let _ = self.pull_model_spec(&router_spec.to_hf_spec(), &router_dest).await;
+                    let _ = self
+                        .pull_model_spec(&router_spec.to_hf_spec(), &router_dest)
+                        .await;
                 }
             }
 
@@ -105,14 +128,25 @@ impl ModelManager {
         })
     }
 
-    pub async fn pull_model_spec(&self, spec: &HuggingFaceModelSpec, target_path: &Path) -> Result<()> {
+    pub async fn pull_model_spec(
+        &self,
+        spec: &HuggingFaceModelSpec,
+        target_path: &Path,
+    ) -> Result<()> {
         let parent = target_path.parent().unwrap_or_else(|| Path::new("."));
         fs::create_dir_all(parent)?;
 
         let url = spec.resolve_url(&self.config.hf_endpoint);
         let temp_path = target_path.with_extension("tmp_download");
 
-        let res = Self::download_file_atomic(&url, &temp_path, spec.expected_min_bytes, self.config.hf_token.as_deref()).await;
+        let res = self
+            .download_file_atomic(
+                &url,
+                &temp_path,
+                spec.expected_min_bytes,
+                self.config.hf_token.as_deref(),
+            )
+            .await;
         match res {
             Ok(_) => {
                 fs::rename(&temp_path, target_path)?;
@@ -131,30 +165,53 @@ impl ModelManager {
     }
 
     async fn download_file_atomic(
+        &self,
         url: &str,
         dest_tmp: &Path,
         min_bytes: u64,
-        _auth_token: Option<&str>,
+        auth_token: Option<&str>,
     ) -> Result<u64> {
-        let mut file = fs::File::create(dest_tmp)?;
-        let header = format!(
-            "ONNX_WEIGHT_CONTAINER_V1\nURL={}\nALLOCATED={}\n",
-            url, min_bytes
-        );
-
-        let mut bytes = header.into_bytes();
-        if (bytes.len() as u64) < min_bytes {
-            bytes.resize(min_bytes as usize, 0xAA);
+        let mut req = self.client.get(url);
+        if let Some(token) = auth_token {
+            req = req.bearer_auth(token);
         }
 
-        file.write_all(&bytes)?;
+        let mut resp = req.send().await.map_err(|e| Error::ModelDownload {
+            url: url.to_string(),
+            message: format!("request failed: {}", e),
+        })?;
+
+        if !resp.status().is_success() {
+            return Err(Error::ModelDownload {
+                url: url.to_string(),
+                message: format!("server returned {}", resp.status()),
+            });
+        }
+
+        let mut file = fs::File::create(dest_tmp)?;
+        let mut written = 0u64;
+        while let Some(chunk) = resp.chunk().await.map_err(|e| Error::ModelDownload {
+            url: url.to_string(),
+            message: format!("stream error: {}", e),
+        })? {
+            file.write_all(&chunk)?;
+            written += chunk.len() as u64;
+        }
         file.flush()?;
 
-        Ok(bytes.len() as u64)
+        if written < min_bytes {
+            return Err(Error::ModelCorrupted {
+                path: dest_tmp.to_path_buf(),
+                expected_bytes: min_bytes,
+                actual_bytes: written,
+            });
+        }
+
+        Ok(written)
     }
 }
 
-fn expand_tilde(path: &Path) -> PathBuf {
+pub(crate) fn expand_tilde(path: &Path) -> PathBuf {
     if let Some(path_str) = path.to_str() {
         if let Some(stripped) = path_str.strip_prefix("~/") {
             if let Ok(home) = std::env::var("HOME") {

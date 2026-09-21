@@ -1,0 +1,17 @@
+# Project .gitignore
+
+# Ciel local domain
+.ciel/
+
+# Rust build artifacts
+/target
+
+# Release packaging artifacts
+/dist/
+/dist-deb/
+/*.flatpak
+/*.sha256
+
+# Coverage
+*.profraw
+*.profdata

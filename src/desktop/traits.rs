@@ -107,7 +107,11 @@ pub trait DesktopBackend: Send + Sync {
     async fn close_window(&self, window_id: Option<&str>) -> Result<(), DesktopError>;
     async fn toggle_fullscreen(&self, window_id: Option<&str>) -> Result<(), DesktopError>;
     async fn toggle_floating(&self, window_id: Option<&str>) -> Result<(), DesktopError>;
-    async fn move_window_to_workspace(&self, window_id: Option<&str>, target_workspace: i32) -> Result<(), DesktopError>;
+    async fn move_window_to_workspace(
+        &self,
+        window_id: Option<&str>,
+        target_workspace: i32,
+    ) -> Result<(), DesktopError>;
 
     fn subscribe_events(&self) -> Result<broadcast::Receiver<DesktopEvent>, DesktopError>;
 }

@@ -24,12 +24,12 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             use_cross: false
             archive_suffix: "linux-x86_64"
+          # musl is intentionally absent: cpal/alsa-sys cannot link a
+          # musl target without an alsa-lib built for musl, which the
+          # cross containers do not ship.
           - target: aarch64-unknown-linux-gnu
             use_cross: true
             archive_suffix: "linux-aarch64"
-          - target: x86_64-unknown-linux-musl
-            use_cross: true
-            archive_suffix: "linux-x86_64-musl"
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -41,13 +41,13 @@ jobs:
         if: ${{ !matrix.use_cross }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y libdbus-1-dev libpipewire-0.3-dev libasound2-dev pkg-config
+          sudo apt-get install -y libasound2-dev pkg-config cmake clang libclang-dev
       - name: Build Binary (Native)
         if: ${{ !matrix.use_cross }}
         run: cargo build --release --target ${{ matrix.target }} --features all-desktops
       - name: Install Cross Tool for Cross-Compilation
         if: ${{ matrix.use_cross }}
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        run: cargo install --locked cross@0.2.5
       - name: Build Binary (Cross)
         if: ${{ matrix.use_cross }}
         run: cross build --release --target ${{ matrix.target }}
@@ -89,8 +89,8 @@ jobs:
       - name: Install cargo-deb & Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libdbus-1-dev libpipewire-0.3-dev libasound2-dev pkg-config
-          cargo install cargo-deb
+          sudo apt-get install -y libasound2-dev pkg-config cmake clang libclang-dev
+          cargo install --locked cargo-deb
       - name: Build .deb Package
         run: |
           cargo deb --target x86_64-unknown-linux-gnu

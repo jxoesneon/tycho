@@ -1,6 +1,9 @@
 //! In-memory stateful mock backend for headless execution and automated tests.
 
-use super::traits::{BackendCapabilities, DesktopBackend, DesktopError, DesktopEvent, WindowContext, WorkspaceContext};
+use super::traits::{
+    BackendCapabilities, DesktopBackend, DesktopError, DesktopEvent, WindowContext,
+    WorkspaceContext,
+};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -26,13 +29,16 @@ impl MockBackend {
         let (event_tx, _) = broadcast::channel(128);
         let mut workspaces = HashMap::new();
         for id in 1..=5 {
-            workspaces.insert(id, WorkspaceContext {
+            workspaces.insert(
                 id,
-                name: format!("workspace-{}", id),
-                is_active: id == 1,
-                monitor: "DP-1".to_string(),
-                windows_count: 0,
-            });
+                WorkspaceContext {
+                    id,
+                    name: format!("workspace-{}", id),
+                    is_active: id == 1,
+                    monitor: "DP-1".to_string(),
+                    windows_count: usize::from(id == 1),
+                },
+            );
         }
 
         let mut windows = HashMap::new();
@@ -47,9 +53,6 @@ impl MockBackend {
             pid: Some(1234),
         };
         windows.insert(default_win.id.clone(), default_win);
-        if let Some(ws1) = workspaces.get_mut(&1) {
-            ws1.windows_count = 1;
-        }
 
         let state = Arc::new(RwLock::new(MockDesktopState {
             active_workspace_id: 1,
@@ -58,8 +61,10 @@ impl MockBackend {
             workspaces,
         }));
 
-        let mut capabilities = BackendCapabilities::default();
-        capabilities.supports_nested_testing = true;
+        let capabilities = BackendCapabilities {
+            supports_nested_testing: true,
+            ..Default::default()
+        };
 
         Self {
             state,
@@ -77,12 +82,19 @@ impl Default for MockBackend {
 
 #[async_trait]
 impl DesktopBackend for MockBackend {
-    fn name(&self) -> &'static str { "Mock Compositor" }
-    fn capabilities(&self) -> &BackendCapabilities { &self.capabilities }
+    fn name(&self) -> &'static str {
+        "Mock Compositor"
+    }
+    fn capabilities(&self) -> &BackendCapabilities {
+        &self.capabilities
+    }
 
     async fn get_active_window(&self) -> Result<Option<WindowContext>, DesktopError> {
         let state = self.state.read().await;
-        Ok(state.active_window_id.as_ref().and_then(|id| state.windows.get(id).cloned()))
+        Ok(state
+            .active_window_id
+            .as_ref()
+            .and_then(|id| state.windows.get(id).cloned()))
     }
 
     async fn list_windows(&self) -> Result<Vec<WindowContext>, DesktopError> {
@@ -99,26 +111,37 @@ impl DesktopBackend for MockBackend {
 
     async fn switch_workspace(&self, target: i32) -> Result<(), DesktopError> {
         let mut state = self.state.write().await;
-        if !state.workspaces.contains_key(&target) {
-            state.workspaces.insert(target, WorkspaceContext {
+        state
+            .workspaces
+            .entry(target)
+            .or_insert_with(|| WorkspaceContext {
                 id: target,
                 name: format!("workspace-{}", target),
                 is_active: false,
                 monitor: "DP-1".to_string(),
                 windows_count: 0,
             });
-        }
         let old_active = state.active_workspace_id;
-        if let Some(old) = state.workspaces.get_mut(&old_active) { old.is_active = false; }
-        if let Some(new) = state.workspaces.get_mut(&target) { new.is_active = true; }
+        if let Some(old) = state.workspaces.get_mut(&old_active) {
+            old.is_active = false;
+        }
+        if let Some(new) = state.workspaces.get_mut(&target) {
+            new.is_active = true;
+        }
         state.active_workspace_id = target;
 
-        let active_win = state.windows.values().find(|w| w.workspace_id == target).map(|w| w.id.clone());
+        let active_win = state
+            .windows
+            .values()
+            .find(|w| w.workspace_id == target)
+            .map(|w| w.id.clone());
         state.active_window_id = active_win.clone();
 
         let _ = self.event_tx.send(DesktopEvent::WorkspaceChanged(target));
         let win_ctx = active_win.and_then(|id| state.windows.get(&id).cloned());
-        let _ = self.event_tx.send(DesktopEvent::ActiveWindowChanged(win_ctx));
+        let _ = self
+            .event_tx
+            .send(DesktopEvent::ActiveWindowChanged(win_ctx));
         Ok(())
     }
 
@@ -128,12 +151,20 @@ impl DesktopBackend for MockBackend {
             state.active_window_id = Some(window_id.to_string());
             if state.active_workspace_id != win.workspace_id {
                 let old = state.active_workspace_id;
-                if let Some(ws) = state.workspaces.get_mut(&old) { ws.is_active = false; }
-                if let Some(ws) = state.workspaces.get_mut(&win.workspace_id) { ws.is_active = true; }
+                if let Some(ws) = state.workspaces.get_mut(&old) {
+                    ws.is_active = false;
+                }
+                if let Some(ws) = state.workspaces.get_mut(&win.workspace_id) {
+                    ws.is_active = true;
+                }
                 state.active_workspace_id = win.workspace_id;
-                let _ = self.event_tx.send(DesktopEvent::WorkspaceChanged(win.workspace_id));
+                let _ = self
+                    .event_tx
+                    .send(DesktopEvent::WorkspaceChanged(win.workspace_id));
             }
-            let _ = self.event_tx.send(DesktopEvent::ActiveWindowChanged(Some(win)));
+            let _ = self
+                .event_tx
+                .send(DesktopEvent::ActiveWindowChanged(Some(win)));
             Ok(())
         } else {
             Err(DesktopError::WindowNotFound(window_id.to_string()))
@@ -144,12 +175,17 @@ impl DesktopBackend for MockBackend {
         let mut state = self.state.write().await;
         let target_id = match window_id {
             Some(id) => id.to_string(),
-            None => state.active_window_id.clone().ok_or_else(|| DesktopError::WindowNotFound("no active window".into()))?,
+            None => state
+                .active_window_id
+                .clone()
+                .ok_or_else(|| DesktopError::WindowNotFound("no active window".into()))?,
         };
 
         if let Some(removed) = state.windows.remove(&target_id) {
             if let Some(ws) = state.workspaces.get_mut(&removed.workspace_id) {
-                if ws.windows_count > 0 { ws.windows_count -= 1; }
+                if ws.windows_count > 0 {
+                    ws.windows_count -= 1;
+                }
             }
             if state.active_window_id.as_deref() == Some(&target_id) {
                 state.active_window_id = None;
@@ -166,7 +202,10 @@ impl DesktopBackend for MockBackend {
         let mut state = self.state.write().await;
         let target_id = match window_id {
             Some(id) => id.to_string(),
-            None => state.active_window_id.clone().ok_or_else(|| DesktopError::WindowNotFound("no active window".into()))?,
+            None => state
+                .active_window_id
+                .clone()
+                .ok_or_else(|| DesktopError::WindowNotFound("no active window".into()))?,
         };
         if let Some(win) = state.windows.get_mut(&target_id) {
             win.is_fullscreen = !win.is_fullscreen;
@@ -180,7 +219,10 @@ impl DesktopBackend for MockBackend {
         let mut state = self.state.write().await;
         let target_id = match window_id {
             Some(id) => id.to_string(),
-            None => state.active_window_id.clone().ok_or_else(|| DesktopError::WindowNotFound("no active window".into()))?,
+            None => state
+                .active_window_id
+                .clone()
+                .ok_or_else(|| DesktopError::WindowNotFound("no active window".into()))?,
         };
         if let Some(win) = state.windows.get_mut(&target_id) {
             win.is_floating = !win.is_floating;
@@ -190,17 +232,30 @@ impl DesktopBackend for MockBackend {
         }
     }
 
-    async fn move_window_to_workspace(&self, window_id: Option<&str>, target_workspace: i32) -> Result<(), DesktopError> {
+    async fn move_window_to_workspace(
+        &self,
+        window_id: Option<&str>,
+        target_workspace: i32,
+    ) -> Result<(), DesktopError> {
         let mut state = self.state.write().await;
         let target_id = match window_id {
             Some(id) => id.to_string(),
-            None => state.active_window_id.clone().ok_or_else(|| DesktopError::WindowNotFound("no active window".into()))?,
+            None => state
+                .active_window_id
+                .clone()
+                .ok_or_else(|| DesktopError::WindowNotFound("no active window".into()))?,
         };
         if let Some(win) = state.windows.get_mut(&target_id) {
             let old_ws = win.workspace_id;
             win.workspace_id = target_workspace;
-            if let Some(ws) = state.workspaces.get_mut(&old_ws) { if ws.windows_count > 0 { ws.windows_count -= 1; } }
-            if let Some(ws) = state.workspaces.get_mut(&target_workspace) { ws.windows_count += 1; }
+            if let Some(ws) = state.workspaces.get_mut(&old_ws) {
+                if ws.windows_count > 0 {
+                    ws.windows_count -= 1;
+                }
+            }
+            if let Some(ws) = state.workspaces.get_mut(&target_workspace) {
+                ws.windows_count += 1;
+            }
             Ok(())
         } else {
             Err(DesktopError::WindowNotFound(target_id))
