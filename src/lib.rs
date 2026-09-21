@@ -31,3 +31,9 @@ pub use generation::AssistantPersona;
 pub use models::{HuggingFaceModelSpec, ModelInventory, ModelManager};
 pub use pipeline::{PipelineEvent, TychoPipelineCoordinator};
 pub use router::{ParsedDesktopCommand, RoutingTier, UnifiedRouter, CANONICAL_DESKTOP_OPTIONS};
+
+/// Serializes tests that mutate process env vars (HOME,
+/// TYCHO_NO_INSTALL) — lib tests share one process and race
+/// without this lock.
+#[cfg(test)]
+pub(crate) static TEST_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());

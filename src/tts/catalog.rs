@@ -569,6 +569,7 @@ mod tests {
 
     #[test]
     fn ensure_voice_no_install_errors() {
+        let _guard = crate::TEST_ENV_LOCK.lock().unwrap();
         std::env::set_var("TYCHO_NO_INSTALL", "1");
         let tmp = tmpdir("no-install");
         let tts = tmp.join("tts");

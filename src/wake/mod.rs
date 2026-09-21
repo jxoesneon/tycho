@@ -414,6 +414,7 @@ mod tests {
     fn no_install_gate_refuses_provisioning() {
         // HOME → empty temp dir so the sidecar is definitely absent,
         // then TYCHO_NO_INSTALL must produce an honest refusal.
+        let _guard = crate::TEST_ENV_LOCK.lock().unwrap();
         let dir = std::env::temp_dir().join(format!("tycho-wake-noinst-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
