@@ -1,28 +1,21 @@
-# cross-rs container setup: the stock aarch64 image is Ubuntu 16.04 —
-# its libclang 3.8 predates the bindgen calls clang-sys 1.9 makes, and
-# gcc 5.4 cannot compile whisper.cpp's C++17. The pre-build pulls
-# clang/libclang 10 from apt.llvm.org and gcc-9 from the toolchain PPA;
-# the workflow passes matching compiler env vars through.
+# cross-rs container setup for local aarch64 builds. The tagged
+# (xenial-based) images ship libclang 3.8 / gcc 5.4 — too old for
+# bindgen and whisper.cpp's C++17 — so use the focal-based :main
+# image, which carries gcc-9 and a modern libclang. CI builds
+# aarch64 directly in an ubuntu:24.04 container instead (see
+# .github/workflows/release.yml).
 
 [target.aarch64-unknown-linux-gnu]
+image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main"
 pre-build = [
     "dpkg --add-architecture arm64",
     "apt-get update -y",
-    "apt-get install -y --no-install-recommends cmake pkg-config wget gnupg ca-certificates libasound2-dev:arm64",
-    "wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -",
-    "echo 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-10 main' > /etc/apt/sources.list.d/llvm10.list",
-    "apt-get update -y",
-    "apt-get install -y --no-install-recommends clang-10 libclang-10-dev",
-    "apt-get install -y --no-install-recommends software-properties-common",
-    "add-apt-repository -y ppa:ubuntu-toolchain-r/test",
-    "apt-get update -y",
-    "apt-get install -y --no-install-recommends gcc-9-aarch64-linux-gnu g++-9-aarch64-linux-gnu",
+    "apt-get install -y --no-install-recommends cmake pkg-config clang libclang-dev libasound2-dev:arm64",
 ]
 
 [build.env]
 passthrough = [
     "LIBCLANG_PATH",
-    "CC_aarch64_unknown_linux_gnu",
-    "CXX_aarch64_unknown_linux_gnu",
     "BINDGEN_EXTRA_CLANG_ARGS",
+    "CMAKE_TOOLCHAIN_FILE_aarch64_unknown_linux_gnu",
 ]

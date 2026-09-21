@@ -45,18 +45,29 @@ jobs:
       - name: Build Binary (Native)
         if: ${{ !matrix.use_cross }}
         run: cargo build --release --target ${{ matrix.target }} --features all-desktops
-      - name: Install Cross Tool for Cross-Compilation
-        if: ${{ matrix.use_cross }}
-        run: cargo install --locked cross@0.2.5
       - name: Build Binary (Cross)
         if: ${{ matrix.use_cross }}
-        env:
-          # Pre-build in Cross.toml installs these inside the container.
-          LIBCLANG_PATH: /usr/lib/llvm-10/lib
-          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc-9
-          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++-9
-          BINDGEN_EXTRA_CLANG_ARGS: --sysroot=/usr/aarch64-linux-gnu
-        run: cross build --release --target ${{ matrix.target }}
+        # Ubuntu 24.04 container: clang-18/libclang for bindgen and gcc-13
+        # for whisper.cpp's C++17 — cross@0.2.5's xenial image is too old.
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src ubuntu:24.04 \
+            bash -euxo pipefail -c '
+              dpkg --add-architecture arm64 &&
+              apt-get update -y &&
+              apt-get install -y --no-install-recommends \
+                curl ca-certificates build-essential pkg-config cmake clang libclang-dev \
+                gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libasound2-dev:arm64 &&
+              curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal &&
+              . "$HOME/.cargo/env" &&
+              rustup target add aarch64-unknown-linux-gnu &&
+              export LIBCLANG_PATH="$(dirname "$(find /usr/lib -name 'libclang.so*' | head -1)")" \
+                     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+                     BINDGEN_EXTRA_CLANG_ARGS="--target=aarch64-linux-gnu --sysroot=/usr/aarch64-linux-gnu" \
+                     PKG_CONFIG_ALLOW_CROSS=1 \
+                     PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig \
+                     CMAKE_TOOLCHAIN_FILE_aarch64_unknown_linux_gnu=/src/docker/aarch64-linux-gnu.cmake &&
+              cargo build --release --target ${{ matrix.target }} --features all-desktops
+            '
       - name: Strip Binary
         run: |
           if [ -f target/${{ matrix.target }}/release/tycho ]; then
@@ -113,7 +124,7 @@ jobs:
     name: Build Flatpak Package
     runs-on: ubuntu-latest
     container:
-      image: bilelmoussaoui/flatpak-github-actions:freedesktop-23.08
+      image: bilelmoussaoui/flatpak-github-actions:freedesktop-24.08
       options: --privileged
     steps:
       - name: Checkout Source Code
