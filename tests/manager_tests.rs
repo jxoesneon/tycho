@@ -270,3 +270,23 @@ async fn test_manager_dispatch_info_actions() {
         .unwrap_err();
     assert!(err.to_string().contains("not recognized"));
 }
+
+#[tokio::test]
+async fn test_manager_init_with_config() {
+    // Explicit mock selection binds the in-memory backend.
+    let m = DesktopManager::init_with_config("mock", true).await;
+    assert_eq!(m.backend_name(), "Mock Compositor");
+
+    // backend=auto + auto_detect=false also resolves to mock.
+    let m = DesktopManager::init_with_config("auto", false).await;
+    assert_eq!(m.backend_name(), "Mock Compositor");
+
+    // auto + detect binds whatever the session offers, or mock —
+    // either way the call must not fail.
+    let m = DesktopManager::init_with_config("auto", true).await;
+    assert!(!m.backend_name().is_empty());
+
+    // A named backend that can't answer falls back to mock, not a crash.
+    let m = DesktopManager::init_with_config("kde", true).await;
+    assert!(!m.backend_name().is_empty());
+}

@@ -304,3 +304,21 @@ fn test_settings_keys_round_trip() {
 
     let _ = std::fs::remove_file(&path);
 }
+
+/// The config file can carry API keys — writes must be owner-only.
+#[cfg(unix)]
+#[test]
+fn test_config_file_permissions_owner_only() {
+    use rust_voice_assistant::config::save_config_patch_to;
+    use std::os::unix::fs::PermissionsExt;
+
+    let pid = std::process::id();
+    let path = std::env::temp_dir().join(format!("tycho-perms-{pid}.toml"));
+    let _ = std::fs::remove_file(&path);
+
+    save_config_patch_to(&path, "ui.orb", toml::Value::Boolean(true)).unwrap();
+    let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600, "config file mode was {mode:o}");
+
+    let _ = std::fs::remove_file(&path);
+}

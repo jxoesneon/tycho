@@ -964,6 +964,9 @@ mod tests {
         // Control chars never enter the input.
         m.input_insert("a\u{0007}b\n");
         assert_eq!(m.input, "ab");
+        // Input is bounded — a paste flood stops at the cap.
+        m.input_insert(&"x".repeat(MAX_INPUT_LEN + 500));
+        assert_eq!(m.input.len(), MAX_INPUT_LEN);
     }
 
     #[test]

@@ -5,7 +5,12 @@
 # (unmaintained/unsound) surface as warnings by default.
 db-urls = ["https://github.com/rustsec/advisory-db"]
 yanked = "deny"
-ignore = []
+ignore = [
+    # ttf-parser is unmaintained but only reached through fontdue (UI
+    # text rasterizer); there is no drop-in upgrade — skrifa would
+    # require replacing fontdue outright.
+    "RUSTSEC-2026-0192",
+]
 
 [licenses]
 # Schema v2: crates with no license expression are denied by default.
