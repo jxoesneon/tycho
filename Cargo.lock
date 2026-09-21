@@ -2461,7 +2461,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tycho"
+name = "tycho-ai"
 version = "0.3.0"
 dependencies = [
  "async-trait",

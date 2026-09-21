@@ -1,5 +1,5 @@
 [package]
-name = "tycho"
+name = "tycho-ai"
 version = "0.3.0"
 edition = "2021"
 rust-version = "1.88.0"
@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/jxoesneon/tycho"
 homepage = "https://github.com/jxoesneon/tycho"
-documentation = "https://docs.rs/tycho"
+documentation = "https://docs.rs/tycho-ai"
 keywords = ["voice-assistant", "wayland", "hyprland", "kde", "onnx"]
 categories = ["accessibility", "command-line-utilities", "multimedia::audio"]
 exclude = [
