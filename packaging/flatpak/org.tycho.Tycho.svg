@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="62%">
+      <stop offset="0%" stop-color="#1b2130"/>
+      <stop offset="100%" stop-color="#0a0d14"/>
+    </radialGradient>
+    <radialGradient id="orb" cx="42%" cy="36%" r="72%">
+      <stop offset="0%" stop-color="#dfe9ff"/>
+      <stop offset="30%" stop-color="#8fb4ff"/>
+      <stop offset="62%" stop-color="#4f7ef2"/>
+      <stop offset="100%" stop-color="#233a8f"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#6f97ff" stop-opacity="0.55"/>
+      <stop offset="70%" stop-color="#4f7ef2" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#4f7ef2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <circle cx="128" cy="128" r="98" fill="url(#glow)"/>
+  <circle cx="128" cy="128" r="72" fill="url(#orb)"/>
+  <circle cx="106" cy="102" r="24" fill="url(#core)"/>
+</svg>

@@ -53,6 +53,8 @@ jobs:
           docker run --rm -v "$PWD:/src" -w /src ubuntu:24.04 \
             bash -euxo pipefail -c '
               dpkg --add-architecture arm64 &&
+              sed -i "/^URIs:/a Architectures: amd64" /etc/apt/sources.list.d/ubuntu.sources &&
+              echo -e "Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports/\nSuites: noble noble-updates\nComponents: main universe\nArchitectures: arm64\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n" > /etc/apt/sources.list.d/arm64-ports.sources &&
               apt-get update -y &&
               apt-get install -y --no-install-recommends \
                 curl ca-certificates build-essential pkg-config cmake clang libclang-dev \

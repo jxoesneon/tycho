@@ -37,6 +37,7 @@ modules:
       - install -Dm755 target/release/tycho /app/bin/tycho
       - install -Dm644 packaging/flatpak/org.tycho.Tycho.desktop /app/share/applications/org.tycho.Tycho.desktop
       - install -Dm644 packaging/flatpak/org.tycho.Tycho.metainfo.xml /app/share/metainfo/org.tycho.Tycho.metainfo.xml
+      - install -Dm644 packaging/flatpak/org.tycho.Tycho.svg /app/share/icons/hicolor/scalable/apps/org.tycho.Tycho.svg
     sources:
       - type: dir
         path: ../../
